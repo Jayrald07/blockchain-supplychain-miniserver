@@ -48,13 +48,26 @@ app.get("/ping", async (req: express.Request, res: express.Response, next: NextF
 });
 
 app.post("/initialize", async (req: express.Request, res) => {
-  const { orgName, username, password, msp, id } = req.body;
+  const { orgName, username, password, id } = req.body;
 
-  let port = await getPort({});
-  let [operations, admin, general] = [await getPort({}), await getPort({}), await getPort({})];
-  let [caPort, caOperationPort, caOrdererPort, caOrdererOperationPort] = [await getPort({}), await getPort({}), await getPort({}), await getPort({})]
+  let db: sql3.Database = app.get("db")
+
 
   try {
+    await new Promise((resolve, reject) => {
+      db.serialize(function () {
+        db.all("SELECT name FROM config WHERE name = \"SETUP\" AND value = \"done\"", (error, rows: any[]) => {
+          if (error) return reject("Getting configuration failed")
+          if (rows.length) reject("This machine is already setup")
+          else resolve("Continue");
+        })
+      })
+    })
+
+    console.log("herer")
+    let port = await getPort({});
+    let [operations, admin, general] = [await getPort({}), await getPort({}), await getPort({})];
+    let [caPort, caOperationPort, caOrdererPort, caOrdererOperationPort] = [await getPort({}), await getPort({}), await getPort({}), await getPort({})]
 
     await createCa({ orgName, caPort, caOperationPort, caOrdererPort, caOrdererOperationPort });
 
@@ -66,10 +79,17 @@ app.post("/initialize", async (req: express.Request, res) => {
 
     await createOrg({ orgName, username, password, peerPort: port, caPort })
 
-    let db: sql3.Database = app.get("db")
     db.serialize(function () {
-      let stmt = db.prepare("INSERT INTO config VALUES(?,?)");
-      stmt.run("ID", id);
+      let stmt = db.prepare("INSERT INTO config VALUES(?,?),(?,?),(?,?),(?,?),(?,?),(?,?),(?,?),(?,?),(?,?)");
+      stmt.run("ID", id,
+        "PEER_PORT", port,
+        "ORDERER_GENERAL_PORT", general,
+        "ORDERER_ADMIN_PORT", admin,
+        "ORDERER_OPERATION_PORT", operations,
+        "CA_PORT", caPort,
+        "CA_OPERATION_PORT", caOperationPort,
+        "CA_ORDERER_PORT", caOrdererPort,
+        "CA_ORDERER_OPERATION_PORT", caOrdererOperationPort);
       stmt.finalize();
       stmt = db.prepare("UPDATE config SET value = ? WHERE name = \"SETUP\"");
       stmt.run("done");
