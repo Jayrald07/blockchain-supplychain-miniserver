@@ -3,6 +3,8 @@ import express, { NextFunction } from "express";
 import cors from "cors";
 import getPort from "./getPort";
 import sql3, { sqlite3 } from "sqlite3";
+import { createCa, createOrderer, createOrg } from "./utils/shell";
+import { sleep } from "./utils/general";
 
 const app = express();
 
@@ -42,7 +44,6 @@ app.set("db", db);
 
 // This will be used for connecting the peer to main system to check if it is working and legit
 app.get("/ping", async (req: express.Request, res: express.Response, next: NextFunction) => {
-
   res.send({ message: "Done", details: "pong" });
 });
 
@@ -50,29 +51,37 @@ app.post("/initialize", async (req: express.Request, res) => {
   const { orgName, username, password, msp, id } = req.body;
 
   let port = await getPort({});
-  let [operations, admin, general] = [await getPort({}), await getPort({}), await getPort({}),];
+  let [operations, admin, general] = [await getPort({}), await getPort({}), await getPort({})];
+  let [caPort, caOperationPort, caOrdererPort, caOrdererOperationPort] = [await getPort({}), await getPort({}), await getPort({}), await getPort({})]
 
-  exec(`${process.cwd()}/../scripts/initialize.sh --on ${orgName} --ca-username admin --ca-password adminpw --ca-port 6054 --u ${username} --p ${password} --pport ${port} --msp ${msp}`, (error, stdout, stderror) => {
-    if (error) return res.send({ message: "Error initializing the peer", details: stderror, status: "error" });
-    exec(`${process.cwd()}/../scripts/createOrderer.sh ${msp} ${general} ${admin} ${operations}`, (error, stdout, stderror) => {
-      if (error) return res.send({ message: "Error initializing the peer", details: stderror, status: "error" });
-      let db: sql3.Database = app.get("db")
+  try {
 
-      db.serialize(function () {
-        let stmt = db.prepare("INSERT INTO config VALUES(?,?)");
-        stmt.run("ID", id);
-        stmt.finalize();
+    await createCa({ orgName, caPort, caOperationPort, caOrdererPort, caOrdererOperationPort });
 
+    await sleep(2000);
 
-        stmt = db.prepare("UPDATE config SET value = ? WHERE name = \"SETUP\"");
-        stmt.run("done");
-        stmt.finalize();
+    await createOrderer({ orgName, general, admin, operations, caOrdererUsername: "admin", caOrdererPassword: "adminpw", caOrdererPort });
 
-      })
+    await sleep(2000);
 
-      res.send({ message: "Done", details: { stdout, peerPort: port, ordererPorts: { general, admin, operations } } })
+    await createOrg({ orgName, username, password, peerPort: port, caPort })
+
+    let db: sql3.Database = app.get("db")
+    db.serialize(function () {
+      let stmt = db.prepare("INSERT INTO config VALUES(?,?)");
+      stmt.run("ID", id);
+      stmt.finalize();
+      stmt = db.prepare("UPDATE config SET value = ? WHERE name = \"SETUP\"");
+      stmt.run("done");
+      stmt.finalize();
     })
-  })
+    res.send({ message: "Done", details: { peerPort: port, ordererPorts: { general, admin, operations } } })
+  } catch (error: any) {
+
+    res.send({ message: "Failed", details: error });
+
+  }
+
 })
 
 // Creation of new channel
