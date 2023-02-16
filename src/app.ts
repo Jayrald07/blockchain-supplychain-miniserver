@@ -5,6 +5,8 @@ import getPort from "./getPort";
 import sql3, { sqlite3 } from "sqlite3";
 import { createCa, createOrderer, createOrg } from "./utils/shell";
 import { sleep } from "./utils/general";
+import https from "https";
+import fs from "fs";
 
 const app = express();
 
@@ -27,8 +29,6 @@ let db = new sqlite3.Database("./src/config/configuration.db", (err) => {
   db.serialize(function () {
     db.all("SELECT * FROM config WHERE name = \"SETUP\"", (error, rows: any[]) => {
       if (error) console.error({ message: "Error", details: "Getting configuration failed" })
-      console.log("Config table fetched!")
-
       if (!rows.length) {
         let stmt = db.prepare("INSERT INTO config VALUES(?,?)");
         stmt.run("SETUP", "processing");
@@ -64,7 +64,6 @@ app.post("/initialize", async (req: express.Request, res) => {
       })
     })
 
-    console.log("herer")
     let port = await getPort({});
     let [operations, admin, general] = [await getPort({}), await getPort({}), await getPort({})];
     let [caPort, caOperationPort, caOrdererPort, caOrdererOperationPort] = [await getPort({}), await getPort({}), await getPort({}), await getPort({})]
@@ -109,7 +108,6 @@ app.post("/channel", async (req: express.Request, res: express.Response): Promis
   const { channelId, msp, orgName, peerPort, channelToMSP, ordererAdminPort, ordererGeneralPort } = req.body;
 
   exec(`${process.cwd()}/../scripts/createNewChannel.sh ${channelId} ${msp} ${channelToMSP} ${orgName} ${peerPort} ${ordererAdminPort} ${ordererGeneralPort}`, (error, stdout, stderror) => {
-    console.log(stdout, stderror)
     if (error) return res.send({ message: "Error creating the channel", details: stderror, status: "error" });
     res.send({ message: "Done" })
   })
@@ -118,11 +116,10 @@ app.post("/channel", async (req: express.Request, res: express.Response): Promis
 
 // Get all channels that peer joined in
 app.get("/channels", async (req: express.Request, res: express.Response, next: NextFunction): Promise<void> => {
-  const { msp, orgName, peerPort } = req.query;
+  const { orgName, peerPort } = req.query;
 
-  exec(`${process.cwd()}/../scripts/getChannels.sh ${msp} ${orgName} ${peerPort}`, (error, stdout, stderror) => {
+  exec(`${process.cwd()}/../scripts/getChannels.sh ${orgName} ${peerPort}`, (error, stdout, stderror) => {
     try {
-      console.log(stdout)
       if (error) return res.send({ message: "Getting channels error", details: stderror, status: "error" });
 
       const message = stdout.split(":")[1].trim().split(" ");
@@ -145,7 +142,6 @@ app.get("/getConfig", (req, res) => {
   db.serialize(function () {
     db.all("SELECT * FROM config", (error, rows: any[]) => {
       if (error) return res.send({ message: "Error", details: "Getting configuration failed" })
-      console.log(rows);
       res.send({ message: "Done", details: rows })
     })
   })
@@ -158,4 +154,4 @@ app.get("/getConfig", (req, res) => {
 
 app.listen(8012, (): void => {
   console.log("Listening for coming request...");
-});
+})
