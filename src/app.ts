@@ -7,6 +7,8 @@ import { createCa, createOrderer, createOrg } from "./utils/shell";
 import { sleep } from "./utils/general";
 import https from "https";
 import fs from "fs";
+import axios from "axios";
+import DB_Config from "./utils/db";
 
 const app = express();
 
@@ -40,6 +42,8 @@ let db = new sqlite3.Database("./src/config/configuration.db", (err) => {
 })
 
 app.set("db", db);
+
+const DB = new DB_Config(db);
 
 
 // This will be used for connecting the peer to main system to check if it is working and legit
@@ -105,9 +109,14 @@ app.post("/initialize", async (req: express.Request, res) => {
 
 // Creation of new channel
 app.post("/channel", async (req: express.Request, res: express.Response): Promise<void> => {
-  const { channelId, msp, orgName, peerPort, channelToMSP, ordererAdminPort, ordererGeneralPort } = req.body;
+  const { channelId, msp, orgName, channelToMSP } = req.body;
 
-  exec(`${process.cwd()}/../scripts/createNewChannel.sh ${channelId} ${msp} ${channelToMSP} ${orgName} ${peerPort} ${ordererAdminPort} ${ordererGeneralPort}`, (error, stdout, stderror) => {
+  const peer = await DB.getValueByName("PEER_PORT");
+  const admin = await DB.getValueByName("ORDERER_ADMIN_PORT");
+  const general = await DB.getValueByName("ORDERER_GENERAL_PORT");
+
+
+  exec(`${process.cwd()}/../scripts/createNewChannel.sh ${channelId} ${msp} ${channelToMSP} ${orgName} ${peer[0].value} ${admin[0].value} ${general[0].value}`, (error, stdout, stderror) => {
     if (error) return res.send({ message: "Error creating the channel", details: stderror, status: "error" });
     res.send({ message: "Done" })
   })
@@ -116,9 +125,11 @@ app.post("/channel", async (req: express.Request, res: express.Response): Promis
 
 // Get all channels that peer joined in
 app.get("/channels", async (req: express.Request, res: express.Response, next: NextFunction): Promise<void> => {
-  const { orgName, peerPort } = req.query;
+  const { orgName } = req.query;
 
-  exec(`${process.cwd()}/../scripts/getChannels.sh ${orgName} ${peerPort}`, (error, stdout, stderror) => {
+  const peer = await DB.getValueByName("PEER_PORT");
+
+  exec(`${process.cwd()}/../scripts/getChannels.sh ${orgName} ${peer[0].value}`, (error, stdout, stderror) => {
     try {
       if (error) return res.send({ message: "Getting channels error", details: stderror, status: "error" });
 
@@ -148,9 +159,43 @@ app.get("/getConfig", (req, res) => {
 
 })
 
-// app.use((error: Error, req: express.Request, res: express.Response) => {
-//   if (error) res.status(500).send({ message: error.message })
-// })
+app.post("/getChannelConfig", async (req, res) => {
+  const { orgName, channelId } = req.body;
+
+  try {
+    const peer = await DB.getValueByName("PEER_PORT");
+    const general = await DB.getValueByName("ORDERER_GENERAL_PORT");
+
+    exec(`${process.cwd()}/../scripts/getChannelConfig.sh ${orgName} ${peer[0].value} ${channelId} ${general[0].value}`, (error, stdout, stderr) => {
+      if (error) throw new Error(stderr);
+
+      res.send({ message: "Done", details: { config: fs.readFileSync(`${process.cwd()}/../channel-artifacts/config_block.pb`), ordererTlsCa: fs.readFileSync(`${process.cwd()}/../organizations/ordererOrganizations/orderer.${orgName}.com/tlsca/tlsca.orderer.${orgName}.com-cert.pem`) } })
+    })
+
+  } catch (err: any) {
+    res.send({ message: "Error", details: "Getting configuration failed" })
+  }
+
+})
+
+app.post("/receiveChannelConfig", async (req, res) => {
+  const { channelConfig, ordererTlsCa, orgName, otherOrgName, channelId } = req.body;
+
+  fs.writeFileSync(`${process.cwd()}/../channel-artifacts/config_bloc.pb`, channelConfig);
+
+  fs.mkdirSync(`${process.cwd()}/../orderer`);
+
+  fs.writeFileSync(`${process.cwd()}/../orderer/tlsca.orderer.${orgName}.com-cert.pem`, ordererTlsCa);
+
+  const peer = await DB.getValueByName("PEER_PORT")
+  const general = await DB.getValueByName("ORDERER_GENERAL_PORT")
+
+  exec(`${process.cwd()}/../scripts/addOrgInChannel.sh ${orgName} ${otherOrgName} ${peer[0].value} ${channelId} ${general[0].value}`, (error, stdout, stderror) => {
+    if (error) return res.send({ message: "Error", details: stderror })
+    res.send({ message: "Done", details: "Received" })
+  })
+
+});
 
 app.listen(8012, (): void => {
   console.log("Listening for coming request...");
