@@ -181,21 +181,39 @@ app.post("/getChannelConfig", async (req, res) => {
 app.post("/receiveChannelConfig", async (req, res) => {
   const { channelConfig, ordererTlsCa, orgName, otherOrgName, channelId } = req.body;
 
-  fs.writeFileSync(`${process.cwd()}/../channel-artifacts/config_bloc.pb`, channelConfig);
+  fs.writeFileSync(`${process.cwd()}/../channel-artifacts/config_block.pb`, Buffer.from(channelConfig));
 
   fs.mkdirSync(`${process.cwd()}/../orderer`);
 
-  fs.writeFileSync(`${process.cwd()}/../orderer/tlsca.orderer.${orgName}.com-cert.pem`, ordererTlsCa);
+  fs.writeFileSync(`${process.cwd()}/../orderer/tlsca.orderer.${otherOrgName}.com-cert.pem`, Buffer.from(ordererTlsCa));
 
   const peer = await DB.getValueByName("PEER_PORT")
-  const general = await DB.getValueByName("ORDERER_GENERAL_PORT")
 
-  exec(`${process.cwd()}/../scripts/addOrgInChannel.sh ${orgName} ${otherOrgName} ${peer[0].value} ${channelId} ${general[0].value}`, (error, stdout, stderror) => {
+  exec(`${process.cwd()}/../scripts/addOrgInChannel.sh ${orgName} ${otherOrgName} ${peer[0].value} ${channelId}`, (error, stdout, stderror) => {
     if (error) return res.send({ message: "Error", details: stderror })
-    res.send({ message: "Done", details: "Received" })
+    res.send({ message: "Done", details: { block: fs.readFileSync(`${process.cwd()}/../channel-artifacts/_update_in_envelope.pb`) } })
+    exec(`rm -rf ${process.cwd()}/../channel-artifacts/*`);
+    exec(`rm -rf ${process.cwd()}/../orderer`);
+  })
+});
+
+app.post("/joinChannelNow", async (req, res) => {
+  const { channelId, ordererGeneralPort, otherOrgName, orgName, ordererTlsCa } = req.body;
+
+  const peer = await DB.getValueByName("PEER_PORT");
+
+  fs.mkdirSync(`${process.cwd()}/../orderer`);
+
+  fs.writeFileSync(`${process.cwd()}/../orderer/tlsca.orderer.${otherOrgName}.com-cert.pem`, Buffer.from(ordererTlsCa));
+
+  exec(`${process.cwd()}/../scripts/fetchAndJoinChannel.sh ${orgName} ${peer[0].value} ${ordererGeneralPort} ${channelId} ${otherOrgName}`, (error, stdout, stderror) => {
+    if (error) return res.send({ message: "Error", details: stderror })
+    res.send({ message: "Done", details: "Peer Joined" })
+    exec(`rm -rf ${process.cwd()}/../channel-artifacts/*`);
+    exec(`rm -rf ${process.cwd()}/../orderer`);
   })
 
-});
+})
 
 app.listen(8012, (): void => {
   console.log("Listening for coming request...");
