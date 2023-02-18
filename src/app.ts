@@ -109,14 +109,14 @@ app.post("/initialize", async (req: express.Request, res) => {
 
 // Creation of new channel
 app.post("/channel", async (req: express.Request, res: express.Response): Promise<void> => {
-  const { channelId, msp, orgName, channelToMSP } = req.body;
+  const { channelId, orgName, channelToMSP } = req.body;
 
   const peer = await DB.getValueByName("PEER_PORT");
   const admin = await DB.getValueByName("ORDERER_ADMIN_PORT");
   const general = await DB.getValueByName("ORDERER_GENERAL_PORT");
 
 
-  exec(`${process.cwd()}/../scripts/createNewChannel.sh ${channelId} ${msp} ${channelToMSP} ${orgName} ${peer[0].value} ${admin[0].value} ${general[0].value}`, (error, stdout, stderror) => {
+  exec(`${process.cwd()}/../scripts/createNewChannel.sh ${channelId} ${channelToMSP} ${orgName} ${peer[0].value} ${admin[0].value} ${general[0].value}`, (error, stdout, stderror) => {
     if (error) return res.send({ message: "Error creating the channel", details: stderror, status: "error" });
     res.send({ message: "Done" })
   })
@@ -214,6 +214,21 @@ app.post("/joinChannelNow", async (req, res) => {
   })
 
 })
+
+app.post("/signAndUpdateChannel", async (req, res) => {
+  const { orgName, channelId, updateBlock } = req.body;
+
+  const peer = await DB.getValueByName("PEER_PORT");
+  const general = await DB.getValueByName("ORDERER_GENERAL_PORT");
+
+  fs.writeFileSync(`${process.cwd()}/../channel-artifacts/_update_in_envelope.pb`, Buffer.from(updateBlock))
+
+  exec(`${process.cwd()}/../scripts/updateChannel.sh ${orgName} ${peer[0].value} ${channelId} ${general[0].value}`, (error, stdout, stderror) => {
+    if (error) return res.send({ message: "Error", details: stderror })
+    res.send({ message: "Done", details: { block: fs.readFileSync(`${process.cwd()}/../channel-artifacts/_update_in_envelope.pb`), ordererGeneralPort: general[0].value } })
+  })
+
+});
 
 app.listen(8012, (): void => {
   console.log("Listening for coming request...");
