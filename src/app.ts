@@ -18,7 +18,7 @@ app.use(cors({
 
 app.use(express.static("public"));
 
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
 
 const sqlite3 = sql3.verbose();
 
@@ -142,10 +142,6 @@ app.get("/channels", async (req: express.Request, res: express.Response, next: N
   })
 })
 
-app.post("/joinOrg", async (req: express.Request, res: express.Response): Promise<void> => {
-
-})
-
 app.get("/getConfig", (req, res) => {
 
   const db: sql3.Database = app.get("db")
@@ -179,7 +175,7 @@ app.post("/getChannelConfig", async (req, res) => {
 })
 
 app.post("/receiveChannelConfig", async (req, res) => {
-  const { channelConfig, ordererTlsCa, orgName, otherOrgName, channelId } = req.body;
+  const { channelConfig, ordererTlsCa, orgName, otherOrgName, channelId, orgType } = req.body;
 
   fs.writeFileSync(`${process.cwd()}/../channel-artifacts/config_block.pb`, Buffer.from(channelConfig));
 
@@ -188,8 +184,9 @@ app.post("/receiveChannelConfig", async (req, res) => {
   fs.writeFileSync(`${process.cwd()}/../orderer/tlsca.orderer.${otherOrgName}.com-cert.pem`, Buffer.from(ordererTlsCa));
 
   const peer = await DB.getValueByName("PEER_PORT")
+  const general = await DB.getValueByName("ORDERER_GENERAL_PORT")
 
-  exec(`${process.cwd()}/../scripts/addOrgInChannel.sh ${orgName} ${otherOrgName} ${peer[0].value} ${channelId}`, (error, stdout, stderror) => {
+  exec(`${process.cwd()}/../scripts/addOrgInChannel.sh ${orgName} ${otherOrgName} ${peer[0].value} ${channelId} ${orgType} ${general[0].value}`, (error, stdout, stderror) => {
     if (error) return res.send({ message: "Error", details: stderror })
     res.send({ message: "Done", details: { block: fs.readFileSync(`${process.cwd()}/../channel-artifacts/_update_in_envelope.pb`) } })
     exec(`rm -rf ${process.cwd()}/../channel-artifacts/*`);
@@ -229,6 +226,22 @@ app.post("/signAndUpdateChannel", async (req, res) => {
   })
 
 });
+
+app.post("/joinOrdererNow", async (req, res) => {
+  const { channelId, orgName, channelConfig } = req.body;
+
+  fs.writeFileSync(`${process.cwd()}/../channel-artifacts/mychannel.block`, Buffer.from(channelConfig));
+
+  const admin = await DB.getValueByName("ORDERER_ADMIN_PORT");
+
+  exec(`${process.cwd()}/../scripts/joinOrderer.sh ${orgName} ${channelId} ${admin[0].value}`, (error, stdout, stderror) => {
+    if (error) return res.send({ message: "Error", details: stderror })
+    res.send({ message: "Done", details: "Orderer Joined" })
+    exec(`rm -rf ${process.cwd()}/../channel-artifacts/*`);
+    exec(`rm -rf ${process.cwd()}/../orderer`);
+  })
+
+})
 
 app.listen(8012, (): void => {
   console.log("Listening for coming request...");
