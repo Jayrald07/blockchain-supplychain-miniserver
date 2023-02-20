@@ -18,7 +18,7 @@ app.use(cors({
 
 app.use(express.static("public"));
 
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
 
 const sqlite3 = sql3.verbose();
 
@@ -216,14 +216,14 @@ app.post("/joinChannelNow", async (req, res) => {
 })
 
 app.post("/signAndUpdateChannel", async (req, res) => {
-  const { orgName, channelId, updateBlock } = req.body;
+  const { orgName, channelId, updateBlock, orgType } = req.body;
 
   const peer = await DB.getValueByName("PEER_PORT");
   const general = await DB.getValueByName("ORDERER_GENERAL_PORT");
 
   fs.writeFileSync(`${process.cwd()}/../channel-artifacts/_update_in_envelope.pb`, Buffer.from(updateBlock))
 
-  exec(`${process.cwd()}/../scripts/updateChannel.sh ${orgName} ${peer[0].value} ${channelId} ${general[0].value}`, (error, stdout, stderror) => {
+  exec(`${process.cwd()}/../scripts/updateChannel.sh ${orgName} ${peer[0].value} ${channelId} ${general[0].value} 0 ${orgType}`, (error, stdout, stderror) => {
     if (error) return res.send({ message: "Error", details: stderror })
     res.send({ message: "Done", details: { block: fs.readFileSync(`${process.cwd()}/../channel-artifacts/_update_in_envelope.pb`), ordererGeneralPort: general[0].value } })
   })
