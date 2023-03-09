@@ -23,3 +23,9 @@ export type PEER_ARG = {
     peerPort: string;
     caPort: string;
 }
+
+export type PEER_ENV = {
+    ORG_NAME: string;
+    HOST: string;
+    PORT: number;
+}

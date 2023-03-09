@@ -3,12 +3,14 @@ import express, { NextFunction } from "express";
 import cors from "cors";
 import getPort from "./getPort";
 import sql3, { sqlite3 } from "sqlite3";
-import { createCa, createOrderer, createOrg } from "./utils/shell";
+import { Chaincode, createCa, createOrderer, createOrg } from "./utils/shell";
 import { sleep } from "./utils/general";
-import https from "https";
 import fs from "fs";
-import axios from "axios";
 import DB_Config from "./utils/db";
+import { blockchainInit } from "./blockchain";
+import { Contract, Gateway } from "@hyperledger/fabric-gateway";
+import { acceptAssetRequest, closeGRPCConnection, createAsset, readAssetByID, transferAsset, transferNow } from "./utils/blockchain";
+import { Client } from "@grpc/grpc-js";
 
 const app = express();
 
@@ -165,7 +167,7 @@ app.post("/getChannelConfig", async (req, res) => {
     exec(`${process.cwd()}/../scripts/getChannelConfig.sh ${orgName} ${peer[0].value} ${channelId} ${general[0].value}`, (error, stdout, stderr) => {
       if (error) throw new Error(stderr);
 
-      res.send({ message: "Done", details: { config: fs.readFileSync(`${process.cwd()}/../channel-artifacts/config_block.pb`), ordererTlsCa: fs.readFileSync(`${process.cwd()}/../organizations/ordererOrganizations/orderer.${orgName}.com/tlsca/tlsca.orderer.${orgName}.com-cert.pem`) } })
+      res.send({ message: "Done", details: { config: fs.readFileSync(`${process.cwd()}/../organizations/channel-artifacts/config_block.pb`), ordererTlsCa: fs.readFileSync(`${process.cwd()}/../organizations/ordererOrganizations/orderer.${orgName}.com/tlsca/tlsca.orderer.${orgName}.com-cert.pem`) } })
     })
 
   } catch (err: any) {
@@ -177,20 +179,20 @@ app.post("/getChannelConfig", async (req, res) => {
 app.post("/receiveChannelConfig", async (req, res) => {
   const { channelConfig, ordererTlsCa, orgName, otherOrgName, channelId, orgType } = req.body;
 
-  fs.writeFileSync(`${process.cwd()}/../channel-artifacts/config_block.pb`, Buffer.from(channelConfig));
+  fs.writeFileSync(`${process.cwd()}/../organizations/channel-artifacts/config_block.pb`, Buffer.from(channelConfig));
 
-  fs.mkdirSync(`${process.cwd()}/../orderer`);
+  fs.mkdirSync(`${process.cwd()}/../organizations/organizations/orderer`);
 
-  fs.writeFileSync(`${process.cwd()}/../orderer/tlsca.orderer.${otherOrgName}.com-cert.pem`, Buffer.from(ordererTlsCa));
+  fs.writeFileSync(`${process.cwd()}/../organizations/orderer/tlsca.orderer.${otherOrgName}.com-cert.pem`, Buffer.from(ordererTlsCa));
 
   const peer = await DB.getValueByName("PEER_PORT")
   const general = await DB.getValueByName("ORDERER_GENERAL_PORT")
 
   exec(`${process.cwd()}/../scripts/addOrgInChannel.sh ${orgName} ${otherOrgName} ${peer[0].value} ${channelId} ${orgType} ${general[0].value}`, (error, stdout, stderror) => {
     if (error) return res.send({ message: "Error", details: stderror })
-    res.send({ message: "Done", details: { block: fs.readFileSync(`${process.cwd()}/../channel-artifacts/_update_in_envelope.pb`) } })
-    exec(`rm -rf ${process.cwd()}/../channel-artifacts/*`);
-    exec(`rm -rf ${process.cwd()}/../orderer`);
+    res.send({ message: "Done", details: { block: fs.readFileSync(`${process.cwd()}/../organizations/channel-artifacts/_update_in_envelope.pb`) } })
+    exec(`rm -rf ${process.cwd()}/../organizations/channel-artifacts/*`);
+    exec(`rm -rf ${process.cwd()}/../organizations/orderer`);
   })
 });
 
@@ -199,15 +201,15 @@ app.post("/joinChannelNow", async (req, res) => {
 
   const peer = await DB.getValueByName("PEER_PORT");
 
-  fs.mkdirSync(`${process.cwd()}/../orderer`);
+  fs.mkdirSync(`${process.cwd()}/../organizations/orderer`);
 
-  fs.writeFileSync(`${process.cwd()}/../orderer/tlsca.orderer.${otherOrgName}.com-cert.pem`, Buffer.from(ordererTlsCa));
+  fs.writeFileSync(`${process.cwd()}/../organizations/orderer/tlsca.orderer.${otherOrgName}.com-cert.pem`, Buffer.from(ordererTlsCa));
 
   exec(`${process.cwd()}/../scripts/fetchAndJoinChannel.sh ${orgName} ${peer[0].value} ${ordererGeneralPort} ${channelId} ${otherOrgName}`, (error, stdout, stderror) => {
     if (error) return res.send({ message: "Error", details: stderror })
     res.send({ message: "Done", details: "Peer Joined" })
-    exec(`rm -rf ${process.cwd()}/../channel-artifacts/*`);
-    exec(`rm -rf ${process.cwd()}/../orderer`);
+    exec(`rm -rf ${process.cwd()}/../organizations/channel-artifacts/*`);
+    exec(`rm -rf ${process.cwd()}/../organizations/orderer`);
   })
 
 })
@@ -218,11 +220,11 @@ app.post("/signAndUpdateChannel", async (req, res) => {
   const peer = await DB.getValueByName("PEER_PORT");
   const general = await DB.getValueByName("ORDERER_GENERAL_PORT");
 
-  fs.writeFileSync(`${process.cwd()}/../channel-artifacts/_update_in_envelope.pb`, Buffer.from(updateBlock))
+  fs.writeFileSync(`${process.cwd()}/../organizations/channel-artifacts/_update_in_envelope.pb`, Buffer.from(updateBlock))
 
   exec(`${process.cwd()}/../scripts/updateChannel.sh ${orgName} ${peer[0].value} ${channelId} ${general[0].value} 0 ${orgType}`, (error, stdout, stderror) => {
     if (error) return res.send({ message: "Error", details: stderror })
-    res.send({ message: "Done", details: { block: fs.readFileSync(`${process.cwd()}/../channel-artifacts/_update_in_envelope.pb`), ordererGeneralPort: general[0].value } })
+    res.send({ message: "Done", details: { block: fs.readFileSync(`${process.cwd()}/../organizations/channel-artifacts/_update_in_envelope.pb`), ordererGeneralPort: general[0].value } })
   })
 
 });
@@ -230,18 +232,41 @@ app.post("/signAndUpdateChannel", async (req, res) => {
 app.post("/joinOrdererNow", async (req, res) => {
   const { channelId, orgName, channelConfig } = req.body;
 
-  fs.writeFileSync(`${process.cwd()}/../channel-artifacts/mychannel.block`, Buffer.from(channelConfig));
+  fs.writeFileSync(`${process.cwd()}/../organizations/channel-artifacts/mychannel.block`, Buffer.from(channelConfig));
 
   const admin = await DB.getValueByName("ORDERER_ADMIN_PORT");
 
   exec(`${process.cwd()}/../scripts/joinOrderer.sh ${orgName} ${channelId} ${admin[0].value}`, (error, stdout, stderror) => {
     if (error) return res.send({ message: "Error", details: stderror })
     res.send({ message: "Done", details: "Orderer Joined" })
-    exec(`rm -rf ${process.cwd()}/../channel-artifacts/*`);
-    exec(`rm -rf ${process.cwd()}/../orderer`);
+    exec(`rm -rf ${process.cwd()}/../organizations/channel-artifacts/*`);
+    exec(`rm -rf ${process.cwd()}/../organizations/orderer`);
   })
 
 })
+
+app.get("/getassets", async (req, res) => {
+  try {
+    const blockchain = await blockchainInit("channel1");
+
+    // res.status(200).json(await createAsset(blockchain?.[2] as Contract, { id: "0001", color: "blue", size: "10", owner: "jayrald" }))
+    res.status(200).json(await readAssetByID(blockchain?.[2] as Contract, "0001"))
+    // res.status(200).json(await transferAsset(blockchain?.[2] as Contract, "0001", ""))
+    // res.status(200).json(await acceptAssetRequest(blockchain?.[2] as Contract, "0001"))
+    // res.status(200).json(await transferNow(blockchain?.[2] as Contract, "1234"))
+
+    if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
+
+  } catch (e) {
+    console.log(e);
+    res.send(e);
+  }
+})
+
+
+app.get("/chaincode", async (req, res) => {
+  res.send(await new Chaincode({ ORG_NAME: "empinoretailer", HOST: "localhost", PORT: 44259 }).packageChaincode());
+});
 
 app.listen(8012, (): void => {
   console.log("Listening for coming request...");
