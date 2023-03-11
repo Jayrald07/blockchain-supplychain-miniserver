@@ -265,7 +265,25 @@ app.get("/getassets", async (req, res) => {
 
 
 app.get("/chaincode", async (req, res) => {
-  res.send(await new Chaincode({ ORG_NAME: "empinoretailer", HOST: "localhost", PORT: 44259 }).packageChaincode());
+
+  try {
+    const chaincode = new Chaincode({ ORG_NAME: "empinoretailer", HOST: "empinoretailer.com", PORT: 45873 })
+    chaincode.setEnv("HOST", "empinoretailer.com");
+    chaincode.setEnv("ORDERER_HOST", "orderer.empinoretailer.com");
+    chaincode.setEnv("ORDERER_GENERAL_PORT", 34587);
+    chaincode.setEnv("SEQUENCE", 1);
+    chaincode.setEnv("VERSION", "1.0");
+    chaincode.setEnv("CHANNEL_ID", "channel1");
+    chaincode.setEnv("CHAINCODE_NAME", "supplychain");
+
+    let result: string[] = await chaincode.checkCommitReadiness();
+
+    res.send({ message: "Done", data: JSON.parse(result.join("")) });
+  } catch (err: any) {
+    console.log(err);
+    res.send({ message: err.message })
+  }
+
 });
 
 app.listen(8012, (): void => {
