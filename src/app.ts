@@ -181,7 +181,7 @@ app.post("/receiveChannelConfig", async (req, res) => {
 
   fs.writeFileSync(`${process.cwd()}/../organizations/channel-artifacts/config_block.pb`, Buffer.from(channelConfig));
 
-  fs.mkdirSync(`${process.cwd()}/../organizations/organizations/orderer`);
+  fs.mkdirSync(`${process.cwd()}/../organizations/orderer`);
 
   fs.writeFileSync(`${process.cwd()}/../organizations/orderer/tlsca.orderer.${otherOrgName}.com-cert.pem`, Buffer.from(ordererTlsCa));
 
