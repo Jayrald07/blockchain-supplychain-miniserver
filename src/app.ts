@@ -313,7 +313,6 @@ app.post("/setup-collections-config", async (req, res) => {
 
 });
 
-
 app.post("/installchaincode", async (req, res) => {
   const { channel, hostname } = req.body;
 
