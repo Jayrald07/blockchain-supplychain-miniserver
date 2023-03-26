@@ -3,7 +3,7 @@ import { Contract, Gateway } from '@hyperledger/fabric-gateway';
 import * as path from 'path';
 import { connectGrpc, newGrpcConnection, newIdentity, newSigner } from "./utils/blockchain";
 
-const cryptoPath = path.resolve(process.cwd(), '..', 'organizations', 'peerOrganizations', 'empinoretailer.com');
+const cryptoPath = path.resolve(process.cwd(), 'organizations', 'peerOrganizations', 'empinoretailer.com');
 
 export async function blockchainInit(channel: string = "mychannel"): Promise<[Gateway | undefined, grpc.Client | undefined, Contract | undefined] | undefined> {
     // TLS Connection
