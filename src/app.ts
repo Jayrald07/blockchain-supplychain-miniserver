@@ -263,22 +263,97 @@ app.get("/getassets", async (req, res) => {
   }
 })
 
+app.post("/setup-collections-config", async (req, res) => {
 
-app.get("/chaincode", async (req, res) => {
+  const { msps } = req.body;
+
+  fs.writeFileSync(`${process.cwd()}/../organizations/collections_config.json`,
+    `[
+  {
+    "name": "assetCollection",
+    "policy": "OR ('${msps[0]}.member','${msps[1]}.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive": 1000000,
+    "memberOnlyRead": true,
+    "memberOnlyWrite": true
+  },
+  {
+    "name": "${msps[0]}PrivateCollection",
+    "policy": "OR ('${msps[0]}.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive": 3,
+    "memberOnlyRead": true,
+    "memberOnlyWrite": false,
+    "endorsementPolicy": {
+      "signaturePolicy": "OR ('${msps[0]}.member','${msps[1]}.member')"
+    }
+  },
+  {
+    "name": "${msps[1]}PrivateCollection",
+    "policy": "OR ('${msps[1]}.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive": 3,
+    "memberOnlyRead": true,
+    "memberOnlyWrite": false,
+    "endorsementPolicy": {
+      "signaturePolicy": "OR ('${msps[0]}.member','${msps[1]}.member')"
+    }
+  }
+]
+  `
+  );
+
+  res.send({ message: "Done", details: "Collections config created" })
+
+});
+
+app.post("/installchaincode", async (req, res) => {
+  const { channel, hostname } = req.body;
 
   try {
-    const chaincode = new Chaincode({ ORG_NAME: "empinoretailer", HOST: "empinoretailer.com", PORT: 45873 })
-    chaincode.setEnv("HOST", "empinoretailer.com");
-    chaincode.setEnv("ORDERER_HOST", "orderer.empinoretailer.com");
-    chaincode.setEnv("ORDERER_GENERAL_PORT", 34587);
+    const PORT = await DB.getValueByName("PEER_PORT");
+    const ORDERER_GENERAL_PORT = await DB.getValueByName("ORDERER_GENERAL_PORT");
+
+    const chaincode = new Chaincode({ ORG_NAME: hostname, HOST: `${hostname}.com`, PORT: PORT[0].value })
+    chaincode.setEnv("HOST", `${hostname}.com`);
+    chaincode.setEnv("ORDERER_HOST", `orderer.${hostname}.com`);
+    chaincode.setEnv("ORDERER_GENERAL_PORT", ORDERER_GENERAL_PORT[0].value);
     chaincode.setEnv("SEQUENCE", 1);
     chaincode.setEnv("VERSION", "1.0");
-    chaincode.setEnv("CHANNEL_ID", "channel1");
+    chaincode.setEnv("CHANNEL_ID", channel);
     chaincode.setEnv("CHAINCODE_NAME", "supplychain");
 
-    let result: string[] = await chaincode.checkCommitReadiness();
+    let result: string[] = await chaincode.installChaincode();
 
-    res.send({ message: "Done", data: JSON.parse(result.join("")) });
+    res.send({ message: "Done", data: result });
+  } catch (err: any) {
+    res.send({ message: err.message })
+  }
+
+});
+
+app.post("/approvechaincode", async (req, res) => {
+  const { channel, hostname } = req.body;
+
+  try {
+    const PORT = await DB.getValueByName("PEER_PORT");
+    const ORDERER_GENERAL_PORT = await DB.getValueByName("ORDERER_GENERAL_PORT");
+
+    const chaincode = new Chaincode({ ORG_NAME: hostname, HOST: `${hostname}.com`, PORT: PORT[0].value })
+    chaincode.setEnv("HOST", `${hostname}.com`);
+    chaincode.setEnv("ORDERER_HOST", `orderer.${hostname}.com`);
+    chaincode.setEnv("ORDERER_GENERAL_PORT", ORDERER_GENERAL_PORT[0].value);
+    chaincode.setEnv("SEQUENCE", 1);
+    chaincode.setEnv("VERSION", "1.0");
+    chaincode.setEnv("CHANNEL_ID", channel);
+    chaincode.setEnv("CHAINCODE_NAME", "supplychain");
+
+    let result: string[] = await chaincode.approveChaincode();
+
+    res.send({ message: "Done", data: result });
   } catch (err: any) {
     console.log(err);
     res.send({ message: err.message })
@@ -286,6 +361,50 @@ app.get("/chaincode", async (req, res) => {
 
 });
 
-app.listen(8012, (): void => {
+app.post("/collectandtransferca", async (req, res) => {
+
+  const { hostname } = req.body;
+
+  res.send({ ca: fs.readFileSync(`${process.cwd()}/../organizations/peerOrganizations/${hostname}.com/peers/${hostname}.com/tls/ca.crt`) });
+
+})
+
+app.post("/savetemporaryca", async (req, res) => {
+
+  const { cas } = req.body;
+
+  fs.writeFileSync(`${process.cwd()}/../organizations/channel-artifacts/ca.crt`, Buffer.from(cas.ca.data));
+
+  res.send({ message: "Done", details: "Saved temporary CA" })
+
+});
+
+app.post("/checkcommitreadiness", async (req, res) => {
+  const { channel, hostname } = req.body;
+
+  try {
+    const PORT = await DB.getValueByName("PEER_PORT");
+    const ORDERER_GENERAL_PORT = await DB.getValueByName("ORDERER_GENERAL_PORT");
+
+    const chaincode = new Chaincode({ ORG_NAME: hostname, HOST: `${hostname}.com`, PORT: PORT[0].value })
+    chaincode.setEnv("HOST", `${hostname}.com`);
+    chaincode.setEnv("ORDERER_HOST", `orderer.${hostname}.com`);
+    chaincode.setEnv("ORDERER_GENERAL_PORT", ORDERER_GENERAL_PORT[0].value);
+    chaincode.setEnv("SEQUENCE", 1);
+    chaincode.setEnv("VERSION", "1.0");
+    chaincode.setEnv("CHANNEL_ID", channel);
+    chaincode.setEnv("CHAINCODE_NAME", "supplychain");
+
+    let result: string[] = await chaincode.checkCommitReadiness();
+    console.log({ result })
+    res.send({ message: "Done", data: result });
+  } catch (err: any) {
+    console.log(err);
+    res.send({ message: err.message })
+  }
+
+});
+
+app.listen(8013, (): void => {
   console.log("Listening for coming request...");
 })

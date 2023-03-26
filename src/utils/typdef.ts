@@ -27,5 +27,5 @@ export type PEER_ARG = {
 export type PEER_ENV = {
     ORG_NAME: string;
     HOST: string;
-    PORT: number;
+    PORT: string;
 }
