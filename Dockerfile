@@ -16,12 +16,24 @@ ENV PATH="/root/.nvm/versions/node/v${NODE_VERSION}/bin/:${PATH}"
 RUN node --version
 RUN npm --version
 
+RUN apt-get update && \
+    apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common && \
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
+    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" && \
+    apt-get update && \
+    apt-get install -y docker-ce-cli
+
+RUN apt-get install -y jq
+
 WORKDIR /chaindirect
 
 COPY . .
 
-ENV PATH ./scripts:$PATH
+ENV PATH /chaindirect/scripts:$PATH
 
 RUN npm install ts-node-dev -g
 RUN npm install
 CMD [ "npm", "run", "dev" ]
+
+# docker build -t chaindirect/chain-direct:version .
+# docker run --network=host chaindirect/chain-direct:version
