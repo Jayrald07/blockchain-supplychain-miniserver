@@ -31,7 +31,7 @@ COPY . .
 
 ENV PATH /chaindirect/scripts:$PATH
 
-RUN npm install ts-node-dev -g
+RUN npm install typescript -g
 RUN npm install
 RUN npm run build
 RUN rm -rf src
