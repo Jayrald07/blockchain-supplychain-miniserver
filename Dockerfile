@@ -33,7 +33,9 @@ ENV PATH /chaindirect/scripts:$PATH
 
 RUN npm install ts-node-dev -g
 RUN npm install
-CMD [ "npm", "run", "dev" ]
+RUN npm run build
+RUN rm -rf src
+CMD [ "node", "dist/app.js" ]
 
 # docker build -t chaindirect/chain-direct:version .
 # docker run --network=host chaindirect/chain-direct:version

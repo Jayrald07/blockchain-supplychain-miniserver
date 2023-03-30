@@ -29,9 +29,9 @@ app.use(express.json({ limit: "50mb" }));
 const sqlite3 = sql3.verbose();
 
 
-if (!fs.existsSync("./src/config")) fs.mkdirSync("./src/config");
+if (!fs.existsSync(`${process.cwd()}/config`)) fs.mkdirSync(`${process.cwd()}/config`);
 
-let db = new sqlite3.Database("./src/config/configuration.db", (err) => {
+let db = new sqlite3.Database(`${process.cwd()}/config/configuration.db`, (err) => {
   if (err) console.error("Configuration Initialization Failed", err.message);
 
   db.run("CREATE TABLE IF NOT EXISTS config (name TEXT, value TEXT)");
