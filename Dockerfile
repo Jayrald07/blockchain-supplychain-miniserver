@@ -29,7 +29,7 @@ WORKDIR /chaindirect
 
 COPY . .
 
-ENV PATH /chaindirect/scripts:$PATH
+ENV PATH /chaindirect/scripts:/chaindirect/scripts/hlf-bin:$PATH
 
 RUN npm install typescript -g
 RUN npm install
