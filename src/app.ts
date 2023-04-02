@@ -177,7 +177,7 @@ app.post("/getChannelConfig", async (req, res) => {
     })
 
   } catch (err: any) {
-    res.send({ message: "Error", details: "Getting configuration failed" })
+    res.status(500).send({ message: "Error", details: "Getting configuration failed" })
   }
 
 })
@@ -336,7 +336,7 @@ app.post("/installchaincode", async (req, res) => {
 
     res.send({ message: "Done", data: result });
   } catch (err: any) {
-    res.send({ message: err.message })
+    res.status(500).send({ message: err.message })
   }
 });
 
@@ -360,7 +360,7 @@ app.post("/approvechaincode", async (req, res) => {
 
     res.send({ message: "Done", data: result });
   } catch (err: any) {
-    res.send({ message: err.message })
+    res.status(500).send({ message: err.message })
   }
 
 });
@@ -404,7 +404,7 @@ app.post("/checkcommitreadiness", async (req, res) => {
     res.send({ message: "Done", data: result });
   } catch (err: any) {
     console.log(err);
-    res.send({ message: err.message })
+    res.status(500).send({ message: err.message })
   }
 
 });
@@ -435,7 +435,7 @@ app.post("/commitchaincode", async (req, res) => {
     res.send({ message: "Done", data: result });
   } catch (err: any) {
     console.log(err);
-    res.send({ message: err.message })
+    res.status(500).send({ message: err.message })
   }
 
 });
@@ -469,7 +469,7 @@ app.post("/initializechaincode", async (req, res) => {
     res.send({ message: "Done", data: result });
   } catch (err: any) {
     console.log(err);
-    res.send({ message: err.message })
+    res.status(500).send({ message: err.message })
   }
 
 });
