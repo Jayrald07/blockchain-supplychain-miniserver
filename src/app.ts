@@ -16,7 +16,11 @@ import http from "http";
 
 const app = express();
 const server = http.createServer(app);
-const ioServer = new Server(server);
+const ioServer = new Server(server, {
+  cors: {
+    origin: "*"
+  }
+});
 
 app.use(cors({
   origin: "*"
@@ -27,6 +31,11 @@ app.use(express.static("public"));
 app.use(express.json({ limit: "50mb" }));
 
 const sqlite3 = sql3.verbose();
+
+ioServer.on("connection", socket => {
+  console.log("Setup page connected!");
+  socket.emit("connected", { message: "Done", details: null })
+})
 
 
 if (!fs.existsSync(`${process.cwd()}/config`)) fs.mkdirSync(`${process.cwd()}/config`);
@@ -76,20 +85,34 @@ app.post("/initialize", async (req: express.Request, res) => {
       })
     })
 
+    res.send({ message: "Done", details: null })
+
+    ioServer.emit("generatePorts", { message: "Done", details: { name: "Generating ports for orderer, peer, and CA nodes", status: false, position: 0 } });
     let port = await getPort({});
     let [operations, admin, general] = [await getPort({}), await getPort({}), await getPort({})];
     let [caPort, caOperationPort, caOrdererPort, caOrdererOperationPort] = [await getPort({}), await getPort({}), await getPort({}), await getPort({})]
+    ioServer.emit("generatePorts", { message: "Done", details: { name: "Ports for orderer, peer, and CA nodes generated", status: true, position: 0 } });
 
+
+    ioServer.emit("createCa", { message: "Done", details: { name: "Creating CA server", status: false, position: 1 } });
     await createCa({ orgName, caPort, caOperationPort, caOrdererPort, caOrdererOperationPort });
+    ioServer.emit("createCa", { message: "Done", details: { name: "CA server created", status: true, position: 1 } });
+
 
     await sleep(2000);
 
+    ioServer.emit("createOrderer", { message: "Done", details: { name: "Creating orderer node", status: false, position: 2 } });
     await createOrderer({ orgName, general, admin, operations, caOrdererUsername: "admin", caOrdererPassword: "adminpw", caOrdererPort });
+    ioServer.emit("createOrderer", { message: "Done", details: { name: "Orderer node created", status: true, position: 2 } });
 
     await sleep(2000);
 
+    ioServer.emit("createOrg", { message: "Done", details: { name: "Creating peer node", status: false, position: 3 } });
     await createOrg({ orgName, username, password, peerPort: port, caPort })
+    ioServer.emit("createOrg", { message: "Done", details: { name: "Peer node created", status: true, position: 3 } });
 
+
+    ioServer.emit("finalize", { message: "Done", details: { name: "Finalizing nodes configuration", status: false, position: 4 } })
     db.serialize(function () {
       let stmt = db.prepare("INSERT INTO config VALUES(?,?),(?,?),(?,?),(?,?),(?,?),(?,?),(?,?),(?,?),(?,?)");
       stmt.run("ID", id,
@@ -106,7 +129,8 @@ app.post("/initialize", async (req: express.Request, res) => {
       stmt.run("done");
       stmt.finalize();
     })
-    res.send({ message: "Done", details: { peerPort: port, ordererPorts: { general, admin, operations } } })
+    ioServer.emit("finalize", { message: "Done", details: { name: "Nodes configuration finalized", status: true, position: 4 } })
+
   } catch (error: any) {
 
     res.send({ message: "Failed", details: error });
