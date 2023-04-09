@@ -237,7 +237,7 @@ app.post("/joinChannelNow", async (req, res) => {
 
   exec(`${process.cwd()}/scripts/fetchAndJoinChannel.sh ${orgName} ${peer[0].value} ${ordererGeneralPort} ${channelId} ${otherOrgName}`, (error, stdout, stderror) => {
     if (error) return res.send({ message: "Error", details: stderror })
-    res.send({ message: "Done", details: "Peer Joined" })
+    res.send({ message: "Done", details: { port: peer[0].value } })
     exec(`rm -rf ${process.cwd()}/organizations/channel-artifacts/*`);
     exec(`rm -rf ${process.cwd()}/organizations/orderer`);
   })
@@ -274,24 +274,6 @@ app.post("/joinOrdererNow", async (req, res) => {
   })
 
 })
-
-// app.get("/getassets", async (req, res) => {
-//   try {
-//     const blockchain = await blockchainInit("channel1");
-
-//     // res.status(200).json(await createAsset(blockchain?.[2] as Contract, { id: "0001", color: "blue", size: "10", owner: "jayrald" }))
-//     res.status(200).json(await readAssetByID(blockchain?.[2] as Contract, "0001"))
-//     // res.status(200).json(await transferAsset(blockchain?.[2] as Contract, "0001", ""))
-//     // res.status(200).json(await acceptAssetRequest(blockchain?.[2] as Contract, "0001"))
-//     // res.status(200).json(await transferNow(blockchain?.[2] as Contract, "1234"))
-
-//     if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
-
-//   } catch (e) {
-//     console.log(e);
-//     res.send(e);
-//   }
-// })
 
 app.post("/setup-collections-config", async (req, res) => {
 
@@ -497,6 +479,24 @@ app.post("/initializechaincode", async (req, res) => {
   }
 
 });
+
+// app.get("/chaincode", async (req, res) => {
+//   try {
+//     const blockchain = await blockchainInit("channel1");
+
+//     // res.status(200).json(await createAsset(blockchain?.[2] as Contract, { id: "0001", color: "blue", size: "10", owner: "jayrald" }))
+//     res.status(200).json(await readAssetByID(blockchain?.[2] as Contract, "0001"))
+//     // res.status(200).json(await transferAsset(blockchain?.[2] as Contract, "0001", ""))
+//     // res.status(200).json(await acceptAssetRequest(blockchain?.[2] as Contract, "0001"))
+//     // res.status(200).json(await transferNow(blockchain?.[2] as Contract, "1234"))
+
+//     if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
+
+//   } catch (e) {
+//     console.log(e);
+//     res.send(e);
+//   }
+// })
 
 server.listen(8012, (): void => {
   console.log("Listening for coming request...");
