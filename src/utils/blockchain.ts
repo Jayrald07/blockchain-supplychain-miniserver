@@ -5,12 +5,15 @@ import * as grpc from '@grpc/grpc-js';
 import { TextDecoder } from "util";
 import { Identity, Signer, signers, connect, Gateway, Contract, SubmittedTransaction, Network } from "@hyperledger/fabric-gateway";
 // import { toAssetJSON } from "../helpers";
+import { exec } from "child_process";
+
 
 interface Asset {
-    color: string
-    id: string
-    owner: string
-    size: string
+    id: string,
+    owner?: string,
+    channelId?: string,
+    ordererGeneralPort?: string,
+    peerPort?: string
     // doctype: string
 }
 
@@ -71,20 +74,37 @@ export async function readAssetByID(contract: Contract, ID: string): Promise<JSO
     return JSON.parse(resultJson);
 }
 
-export async function createAsset(contract: Contract, data: Asset | { id: string, color: string, size: string, owner: string }): Promise<Asset | { id: string, color: string, size: string, owner: string }> {
-    const { id, color, size, owner } = data;
+export async function readAssetCollection(contract: Contract, ID: string): Promise<JSON> {
+    const resultBytes = await contract.evaluateTransaction('ReadAssetCollection', ID);
+    const resultJson = utf8Decoder.decode(resultBytes);
 
-    await contract.submit("CreatePrivateData", {
-        transientData: { asset_properties: JSON.stringify({ color, owner, size, assetID: id }) }
-    })
+    console.log(resultJson)
 
-    return data
+    return JSON.parse(resultJson);
 }
 
-export async function transferAsset(contract: Contract, ID: string, owner: string): Promise<any> {
+export async function createAsset(contract: Contract, data: any): Promise<Asset> {
+    const { id, owner, orgName, peerPort, ordererGeneralPort, channelId } = data;
+
+    // await contract.submit("CreatePrivateData", {
+    //     transientData: { asset_properties: JSON.stringify({ owner, assetID: id }) }
+    // })
+
+    return new Promise((resolve, reject) => {
+        exec(`${process.cwd()}/scripts/dev.sh ${orgName} ${peerPort} ${ordererGeneralPort} ${channelId} ${id}`, (error, stdout, stderror) => {
+            console.log(stdout);
+            if (error) reject(stderror);
+            resolve({ id });
+        })
+    })
+
+    // return data
+}
+
+export async function transferAsset(contract: Contract, ID: string, newMSP: string, price: string): Promise<any> {
 
     const commit: SubmittedTransaction = await contract.submitAsync('TransferAssetRequest', {
-        arguments: [ID, "empinodistributorMSP", "1000"],
+        arguments: [ID, newMSP, price],
     });
 
     const oldOwner = utf8Decoder.decode(commit.getResult());

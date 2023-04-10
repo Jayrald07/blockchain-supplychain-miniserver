@@ -31,11 +31,14 @@ COPY . .
 
 ENV PATH /chaindirect/scripts:/chaindirect/scripts/hlf-bin:$PATH
 
-RUN npm install typescript -g
+# RUN npm install typescript -g
+RUN npm install -D ts-node-dev
 RUN npm install
-RUN npm run build
-RUN rm -rf src
-CMD [ "node", "dist/app.js" ]
+# RUN npm run build
+# RUN npm run dev
+# RUN rm -rf src
+# CMD [ "node", "dist/app.js" ]
+CMD [ "npm", "run", "dev" ]
 
 # docker build -t chaindirect/chain-direct:version .
 # docker run --network=host chaindirect/chain-direct:version
