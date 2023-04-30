@@ -9,7 +9,7 @@ import fs from "fs";
 import DB_Config from "./utils/db";
 import { blockchainInit } from "./blockchain";
 import { Contract, Gateway } from "@hyperledger/fabric-gateway";
-import { acceptAssetRequest, closeGRPCConnection, createAsset, ownAsset, readAssetByID, readAssetCollection, transferAsset, transferNow } from "./utils/blockchain";
+import { acceptAssetRequest, closeGRPCConnection, createAsset, getLogs, ownAsset, readAssetByID, readAssets, readTransactions, transferAsset, transferNow } from "./utils/blockchain";
 import { Client } from "@grpc/grpc-js";
 import { Server } from "socket.io";
 import http from "http";
@@ -295,16 +295,19 @@ app.post("/setup-collections-config", async (req, res) => {
     "policy": "OR ('${msps[0]}.member','${msps[1]}.member')",
     "requiredPeerCount": 0,
     "maxPeerCount": 1,
-    "blockToLive": 1000000,
+    "blockToLive": 100000,
     "memberOnlyRead": true,
-    "memberOnlyWrite": true
+    "memberOnlyWrite": true,
+    "endorsementPolicy": {
+      "signaturePolicy": "OR ('${msps[0]}.member','${msps[1]}.member')"
+    }
   },
   {
     "name": "${msps[0]}PrivateCollection",
     "policy": "OR ('${msps[0]}.member')",
     "requiredPeerCount": 0,
     "maxPeerCount": 1,
-    "blockToLive": 10000,
+    "blockToLive": 0,
     "memberOnlyRead": true,
     "memberOnlyWrite": false,
     "endorsementPolicy": {
@@ -316,7 +319,7 @@ app.post("/setup-collections-config", async (req, res) => {
     "policy": "OR ('${msps[1]}.member')",
     "requiredPeerCount": 0,
     "maxPeerCount": 1,
-    "blockToLive": 10000,
+    "blockToLive": 0,
     "memberOnlyRead": true,
     "memberOnlyWrite": false,
     "endorsementPolicy": {
@@ -492,17 +495,38 @@ app.post("/initializechaincode", async (req, res) => {
 
 });
 
-app.post("/createAsset", async (req, res) => {
+app.post("/logs", async (req, res) => {
 
-  const { channelId, orgName, assetId, owner } = req.body;
+  const { channelId, orgName, start, offset } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
-  const ordererGeneralPort = await DB.getValueByName("ORDERER_GENERAL_PORT")
 
   try {
+
     const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
 
-    res.status(200).json(await createAsset(blockchain?.[2] as Contract, { id: assetId, owner, channelId, orgName, ordererGeneralPort: ordererGeneralPort[0].value, peerPort: peerPort[0].value }))
+    res.status(200).json(await getLogs(blockchain?.[2] as Contract, start, offset))
+
+    if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
+
+  } catch (e) {
+    console.log(e);
+    res.send(e);
+  }
+})
+
+
+app.post("/createAsset", async (req, res) => {
+
+  const { channelId, orgName, assetId, tags } = req.body;
+
+  const peerPort = await DB.getValueByName("PEER_PORT")
+
+  try {
+
+    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
+
+    res.status(200).json(await createAsset(blockchain?.[2] as Contract, assetId, JSON.stringify(tags)))
 
     if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
 
@@ -523,9 +547,6 @@ app.post("/readAsset", async (req, res) => {
     const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
 
     res.status(200).json(await readAssetByID(blockchain?.[2] as Contract, assetId))
-    // res.status(200).json(await transferAsset(blockchain?.[2] as Contract, "0001", ""))
-    // res.status(200).json(await acceptAssetRequest(blockchain?.[2] as Contract, "0001"))
-    // res.status(200).json(await transferNow(blockchain?.[2] as Contract, "1234"))
 
     if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
 
@@ -536,19 +557,34 @@ app.post("/readAsset", async (req, res) => {
 
 })
 
-app.post("/transferAsset", async (req, res) => {
-
-  const { channelId, orgName, assetId, newMSP, price } = req.body;
+app.post("/getAssets", async (req, res) => {
+  const { channelId, orgName } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
-  const ordererGeneralPort = await DB.getValueByName("ORDERER_GENERAL_PORT")
 
   try {
     const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
 
-    res.status(200).json(await transferAsset(blockchain?.[2] as Contract, assetId, newMSP, price))
-    // res.status(200).json(await acceptAssetRequest(blockchain?.[2] as Contract, "0001"))
-    // res.status(200).json(await transferNow(blockchain?.[2] as Contract, "1234"))
+    res.status(200).json(await readAssets(blockchain?.[2] as Contract))
+
+    if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
+
+  } catch (e) {
+    console.log(e);
+    res.send(e);
+  }
+})
+
+app.post("/transferAsset", async (req, res) => {
+
+  const { channelId, orgName, transactionId, assetIds, newOwnerMSP } = req.body;
+
+  const peerPort = await DB.getValueByName("PEER_PORT")
+
+  try {
+    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
+
+    res.status(200).json(await transferAsset(blockchain?.[2] as Contract, transactionId, assetIds, newOwnerMSP))
 
     if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
 
@@ -560,17 +596,14 @@ app.post("/transferAsset", async (req, res) => {
 
 app.post("/readAssetCollection", async (req, res) => {
 
-  const { channelId, orgName, assetId } = req.body;
+  const { channelId, orgName } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
-  const ordererGeneralPort = await DB.getValueByName("ORDERER_GENERAL_PORT")
 
   try {
     const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
 
-    res.status(200).json(await readAssetCollection(blockchain?.[2] as Contract, assetId))
-    // res.status(200).json(await acceptAssetRequest(blockchain?.[2] as Contract, "0001"))
-    // res.status(200).json(await transferNow(blockchain?.[2] as Contract, "1234"))
+    res.status(200).json(await readTransactions(blockchain?.[2] as Contract))
 
     if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
 
@@ -582,16 +615,14 @@ app.post("/readAssetCollection", async (req, res) => {
 
 app.post("/acceptAsset", async (req, res) => {
 
-  const { channelId, orgName, assetId } = req.body;
+  const { channelId, orgName, transactionId } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
-  const ordererGeneralPort = await DB.getValueByName("ORDERER_GENERAL_PORT")
 
   try {
     const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
 
-    res.status(200).json(await acceptAssetRequest(blockchain?.[2] as Contract, assetId))
-    // res.status(200).json(await transferNow(blockchain?.[2] as Contract, "1234"))
+    res.status(200).json(await acceptAssetRequest(blockchain?.[2] as Contract, transactionId))
 
     if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
 
@@ -603,15 +634,14 @@ app.post("/acceptAsset", async (req, res) => {
 
 app.post("/transferNow", async (req, res) => {
 
-  const { channelId, orgName, assetId } = req.body;
+  const { channelId, orgName, transactionId } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
-  const ordererGeneralPort = await DB.getValueByName("ORDERER_GENERAL_PORT")
 
   try {
     const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
 
-    res.status(200).json(await transferNow(blockchain?.[2] as Contract, assetId))
+    res.status(200).json(await transferNow(blockchain?.[2] as Contract, transactionId))
 
     if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
 
@@ -623,15 +653,14 @@ app.post("/transferNow", async (req, res) => {
 
 app.post("/ownAsset", async (req, res) => {
 
-  const { channelId, orgName, assetId } = req.body;
+  const { channelId, orgName, transactionId } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
-  const ordererGeneralPort = await DB.getValueByName("ORDERER_GENERAL_PORT")
 
   try {
     const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
 
-    res.status(200).json(await ownAsset(blockchain?.[2] as Contract, assetId))
+    res.status(200).json(await ownAsset(blockchain?.[2] as Contract, transactionId))
 
     if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
 

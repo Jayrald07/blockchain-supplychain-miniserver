@@ -65,8 +65,8 @@ export function connectGrpc(client: grpc.Client, identity: Identity, signer: Sig
     })
 }
 
-export async function readAssetByID(contract: Contract, ID: string): Promise<JSON> {
-    const resultBytes = await contract.evaluateTransaction('ReadAssetPrivateDetails', ID);
+export async function getLogs(contract: Contract, start: string = "0", offset: string = "10"): Promise<any> {
+    const resultBytes = await contract.evaluateTransaction('ReadLogs', start, offset);
     const resultJson = utf8Decoder.decode(resultBytes);
 
     console.log(resultJson)
@@ -74,8 +74,8 @@ export async function readAssetByID(contract: Contract, ID: string): Promise<JSO
     return JSON.parse(resultJson);
 }
 
-export async function readAssetCollection(contract: Contract, ID: string): Promise<JSON> {
-    const resultBytes = await contract.evaluateTransaction('ReadAssetCollection', ID);
+export async function readAssets(contract: Contract): Promise<any> {
+    const resultBytes = await contract.evaluateTransaction('ReadPrivateAssets');
     const resultJson = utf8Decoder.decode(resultBytes);
 
     console.log(resultJson)
@@ -83,33 +83,64 @@ export async function readAssetCollection(contract: Contract, ID: string): Promi
     return JSON.parse(resultJson);
 }
 
-export async function createAsset(contract: Contract, data: any): Promise<Asset> {
-    const { id, owner, orgName, peerPort, ordererGeneralPort, channelId } = data;
+export async function readAssetByID(contract: Contract, assetId: string): Promise<any> {
+    const resultBytes = await contract.evaluateTransaction('ReadPrivateAsset', assetId);
+    const resultJson = utf8Decoder.decode(resultBytes);
 
-    // await contract.submit("CreatePrivateData", {
-    //     transientData: { asset_properties: JSON.stringify({ owner, assetID: id }) }
-    // })
+    console.log(resultJson)
 
-    return new Promise((resolve, reject) => {
-        exec(`${process.cwd()}/scripts/dev.sh ${orgName} ${peerPort} ${ordererGeneralPort} ${channelId} ${id}`, (error, stdout, stderror) => {
-            console.log(stdout);
-            if (error) reject(stderror);
-            resolve({ id });
-        })
+    return JSON.parse(resultJson);
+}
+
+export async function readTransactions(contract: Contract): Promise<any> {
+    const resultBytes = await contract.evaluateTransaction('ReadTransactions');
+    const resultJson = utf8Decoder.decode(resultBytes);
+
+    console.log(resultJson)
+
+    return JSON.parse(resultJson);
+}
+
+export async function createAsset(contract: Contract, assetId: string, tags: string): Promise<any> {
+
+    const committed = await contract.submit("CreatePrivateAsset", {
+        arguments: [assetId, JSON.stringify(tags)]
     })
 
-    // return data
+    const response = utf8Decoder.decode(committed);
+
+    console.log({ response });
+
+    return response
 }
 
-export async function transferAsset(contract: Contract, ID: string, newMSP: string, price: string): Promise<any> {
+export async function transferAsset(contract: Contract, transactionId: string, assetIds: string[], newOwnerMSP: string): Promise<any> {
 
-    const commit: SubmittedTransaction = await contract.submitAsync('TransferAssetRequest', {
-        arguments: [ID, newMSP, price],
+    const commit: SubmittedTransaction = await contract.submitAsync('CreatePrivateTransaction', {
+        arguments: [transactionId, JSON.stringify(assetIds), newOwnerMSP],
+    });
+
+    const response = utf8Decoder.decode(commit.getResult());
+
+    const status = await commit.getStatus();
+    if (!status.successful) {
+        throw new Error(`Transaction ${status.transactionId} failed to commit with status code ${status.code}`);
+    }
+
+    return response
+
+}
+
+export async function acceptAssetRequest(contract: Contract, transactionId: string): Promise<any> {
+
+    const commit: SubmittedTransaction = await contract.submitAsync('AcceptTransaction', {
+        arguments: [transactionId],
     });
 
     const oldOwner = utf8Decoder.decode(commit.getResult());
 
     const status = await commit.getStatus();
+
     if (!status.successful) {
         throw new Error(`Transaction ${status.transactionId} failed to commit with status code ${status.code}`);
     }
@@ -118,49 +149,34 @@ export async function transferAsset(contract: Contract, ID: string, newMSP: stri
 
 }
 
-export async function acceptAssetRequest(contract: Contract, ID: string): Promise<any> {
-
-    const commit: SubmittedTransaction = await contract.submitAsync('AcceptAssetRequest', {
-        arguments: [ID],
-    });
-
-    const oldOwner = utf8Decoder.decode(commit.getResult());
-
-    const status = await commit.getStatus();
-    if (!status.successful) {
-        throw new Error(`Transaction ${status.transactionId} failed to commit with status code ${status.code}`);
-    }
-
-    return oldOwner
-
-}
-
-export async function transferNow(contract: Contract, ID: string): Promise<any> {
+export async function transferNow(contract: Contract, transactionId: string): Promise<any> {
 
     const commit: SubmittedTransaction = await contract.submitAsync('TransferNow', {
-        arguments: [ID],
+        arguments: [transactionId],
     });
 
-    const oldOwner = utf8Decoder.decode(commit.getResult());
+    const response = utf8Decoder.decode(commit.getResult());
 
     const status = await commit.getStatus();
+
     if (!status.successful) {
         throw new Error(`Transaction ${status.transactionId} failed to commit with status code ${status.code}`);
     }
 
-    return oldOwner
+    return response
 
 }
 
-export async function ownAsset(contract: Contract, ID: string): Promise<any> {
+export async function ownAsset(contract: Contract, transactionId: string): Promise<any> {
 
     const commit: SubmittedTransaction = await contract.submitAsync('OwnAsset', {
-        arguments: [ID],
+        arguments: [transactionId],
     });
 
     const oldOwner = utf8Decoder.decode(commit.getResult());
 
     const status = await commit.getStatus();
+
     if (!status.successful) {
         throw new Error(`Transaction ${status.transactionId} failed to commit with status code ${status.code}`);
     }
