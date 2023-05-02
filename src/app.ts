@@ -142,14 +142,14 @@ app.post("/initialize", async (req: express.Request, res) => {
 
 // Creation of new channel
 app.post("/channel", async (req: express.Request, res: express.Response): Promise<void> => {
-  const { channelId, orgName, channelToMSP } = req.body;
+  const { channelId, orgName, channelToMSP, host } = req.body;
 
   const peer = await DB.getValueByName("PEER_PORT");
   const admin = await DB.getValueByName("ORDERER_ADMIN_PORT");
   const general = await DB.getValueByName("ORDERER_GENERAL_PORT");
 
 
-  exec(`${process.cwd()}/scripts/createNewChannel.sh ${channelId} ${channelToMSP} ${orgName} ${peer[0].value} ${admin[0].value} ${general[0].value}`, (error, stdout, stderror) => {
+  exec(`${process.cwd()}/scripts/createNewChannel.sh ${channelId} ${channelToMSP} ${orgName} ${peer[0].value} ${admin[0].value} ${general[0].value} ${host}`, (error, stdout, stderror) => {
     if (error) return res.send({ message: "Error creating the channel", details: stderror, status: "error" });
     res.send({ message: "Done" })
   })
@@ -189,13 +189,13 @@ app.get("/getConfig", (req, res) => {
 })
 
 app.post("/getChannelConfig", async (req, res) => {
-  const { orgName, channelId } = req.body;
+  const { orgName, channelId, host } = req.body;
 
   try {
     const peer = await DB.getValueByName("PEER_PORT");
     const general = await DB.getValueByName("ORDERER_GENERAL_PORT");
 
-    exec(`${process.cwd()}/scripts/getChannelConfig.sh ${orgName} ${peer[0].value} ${channelId} ${general[0].value}`, (error, stdout, stderr) => {
+    exec(`${process.cwd()}/scripts/getChannelConfig.sh ${orgName} ${peer[0].value} ${channelId} ${general[0].value} ${host}`, (error, stdout, stderr) => {
       console.log({ error, stdout, stderr })
       if (error) throw new Error(stderr);
 
@@ -209,7 +209,7 @@ app.post("/getChannelConfig", async (req, res) => {
 })
 
 app.post("/receiveChannelConfig", async (req, res) => {
-  const { channelConfig, ordererTlsCa, orgName, otherOrgName, channelId, orgType } = req.body;
+  const { channelConfig, ordererTlsCa, orgName, otherOrgName, channelId, orgType, host } = req.body;
 
   fs.writeFileSync(`${process.cwd()}/organizations/channel-artifacts/config_block.pb`, Buffer.from(channelConfig));
 
@@ -220,7 +220,7 @@ app.post("/receiveChannelConfig", async (req, res) => {
   const peer = await DB.getValueByName("PEER_PORT")
   const general = await DB.getValueByName("ORDERER_GENERAL_PORT")
 
-  exec(`${process.cwd()}/scripts/addOrgInChannel.sh ${orgName} ${otherOrgName} ${peer[0].value} ${channelId} ${orgType} ${general[0].value}`, (error, stdout, stderror) => {
+  exec(`${process.cwd()}/scripts/addOrgInChannel.sh ${orgName} ${otherOrgName} ${peer[0].value} ${channelId} ${orgType} ${general[0].value} ${host}`, (error, stdout, stderror) => {
     console.log({ error, stdout, stderror })
 
     if (error) return res.send({ message: "Error", details: stderror })
@@ -231,7 +231,7 @@ app.post("/receiveChannelConfig", async (req, res) => {
 });
 
 app.post("/joinChannelNow", async (req, res) => {
-  const { channelId, ordererGeneralPort, otherOrgName, orgName, ordererTlsCa } = req.body;
+  const { channelId, ordererGeneralPort, otherOrgName, orgName, ordererTlsCa, host, otherHost } = req.body;
 
   const peer = await DB.getValueByName("PEER_PORT");
 
@@ -239,7 +239,7 @@ app.post("/joinChannelNow", async (req, res) => {
 
   fs.writeFileSync(`${process.cwd()}/organizations/orderer/tlsca.orderer.${otherOrgName}.com-cert.pem`, Buffer.from(ordererTlsCa));
 
-  exec(`${process.cwd()}/scripts/fetchAndJoinChannel.sh ${orgName} ${peer[0].value} ${ordererGeneralPort} ${channelId} ${otherOrgName}`, (error, stdout, stderror) => {
+  exec(`${process.cwd()}/scripts/fetchAndJoinChannel.sh ${orgName} ${peer[0].value} ${ordererGeneralPort} ${channelId} ${otherOrgName} ${host} ${otherHost}`, (error, stdout, stderror) => {
     console.log({ error, stdout, stderror })
 
     if (error) return res.send({ message: "Error", details: stderror })
@@ -251,14 +251,14 @@ app.post("/joinChannelNow", async (req, res) => {
 })
 
 app.post("/signAndUpdateChannel", async (req, res) => {
-  const { orgName, channelId, updateBlock, orgType } = req.body;
+  const { orgName, channelId, updateBlock, orgType, host } = req.body;
 
   const peer = await DB.getValueByName("PEER_PORT");
   const general = await DB.getValueByName("ORDERER_GENERAL_PORT");
 
   fs.writeFileSync(`${process.cwd()}/organizations/channel-artifacts/_update_in_envelope.pb`, Buffer.from(updateBlock))
 
-  exec(`${process.cwd()}/scripts/updateChannel.sh ${orgName} ${peer[0].value} ${channelId} ${general[0].value} 0 ${orgType}`, (error, stdout, stderror) => {
+  exec(`${process.cwd()}/scripts/updateChannel.sh ${orgName} ${peer[0].value} ${channelId} ${general[0].value} 0 ${orgType} ${host}`, (error, stdout, stderror) => {
     console.log({ error, stdout, stderror })
 
     if (error) return res.send({ message: "Error", details: stderror })
@@ -268,13 +268,13 @@ app.post("/signAndUpdateChannel", async (req, res) => {
 });
 
 app.post("/joinOrdererNow", async (req, res) => {
-  const { channelId, orgName, channelConfig } = req.body;
+  const { channelId, orgName, channelConfig, host } = req.body;
 
   fs.writeFileSync(`${process.cwd()}/organizations/channel-artifacts/mychannel.block`, Buffer.from(channelConfig));
 
   const admin = await DB.getValueByName("ORDERER_ADMIN_PORT");
 
-  exec(`${process.cwd()}/scripts/joinOrderer.sh ${orgName} ${channelId} ${admin[0].value}`, (error, stdout, stderror) => {
+  exec(`${process.cwd()}/scripts/joinOrderer.sh ${orgName} ${channelId} ${admin[0].value} ${host}`, (error, stdout, stderror) => {
     console.log({ error, stdout, stderror })
 
     if (error) return res.send({ message: "Error", details: stderror })
