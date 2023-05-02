@@ -2,30 +2,27 @@ import { exec } from "child_process";
 import { CA_ARG, ORDERER_ARG, PEER_ARG, PEER_ENV } from "./typdef";
 import { scripts } from "./scripts";
 
-export const createCa = ({ orgName, caPort, caOperationPort, caOrdererPort, caOrdererOperationPort }: CA_ARG): Promise<string> => {
+export const createCa = ({ orgName, caPort, caOperationPort, caOrdererPort, caOrdererOperationPort, hostname }: CA_ARG): Promise<string> => {
     return new Promise((resolve, reject) => {
-        exec(`${process.cwd()}/scripts/createCAServer.sh ${orgName} ${caPort} ${caOperationPort} ${caOrdererPort} ${caOrdererOperationPort}`, (error, stdout, stderror) => {
+        exec(`${process.cwd()}/scripts/createCAServer.sh ${orgName} ${caPort} ${caOperationPort} ${caOrdererPort} ${caOrdererOperationPort} ${hostname}`, (error, stdout, stderror) => {
             if (error) reject(stderror);
             resolve("Done");
         })
     })
 }
 
-export const createOrderer = ({ orgName, general, admin, operations, caOrdererUsername, caOrdererPassword, caOrdererPort }: ORDERER_ARG): Promise<string> => {
+export const createOrderer = ({ orgName, general, admin, operations, caOrdererUsername, caOrdererPassword, caOrdererPort, hostname }: ORDERER_ARG): Promise<string> => {
     return new Promise((resolve, reject) => {
-        console.log({ orgName, general, admin, operations, caOrdererUsername, caOrdererPassword, caOrdererPort });
-
-        exec(`${process.cwd()}/scripts/createOrderer.sh ${orgName} ${general} ${admin} ${operations} ${caOrdererUsername} ${caOrdererPassword} ${caOrdererPort}`, (error, stdout, stderror) => {
-            console.log(stdout);
+        exec(`${process.cwd()}/scripts/createOrderer.sh ${orgName} ${general} ${admin} ${operations} ${caOrdererUsername} ${caOrdererPassword} ${caOrdererPort} ${hostname}`, (error, stdout, stderror) => {
             if (error) reject(stderror);
             resolve("Done");
         })
     })
 }
 
-export const createOrg = ({ orgName, username, password, peerPort, caPort }: PEER_ARG) => {
+export const createOrg = ({ orgName, username, password, peerPort, caPort, hostname }: PEER_ARG) => {
     return new Promise((resolve, reject) => {
-        exec(`${process.cwd()}/scripts/initialize.sh  --on ${orgName} --ca-username admin --ca-password adminpw --ca-port ${caPort} --u ${username} --p ${password} --pport ${peerPort}`, (error, stdout, stderror) => {
+        exec(`${process.cwd()}/scripts/initialize.sh  --on ${orgName} --ca-username admin --ca-password adminpw --ca-port ${caPort} --u ${username} --p ${password} --pport ${peerPort} --server-ip ${hostname}`, (error, stdout, stderror) => {
             if (error) reject(stderror);
             resolve("Done");
         })
@@ -36,6 +33,58 @@ export const generateCollectionsConfig = (msps: string[]) => {
 
 }
 
+export class HLFComponents {
+    orgName: string
+    constructor(orgName: string) {
+        this.orgName = orgName;
+    }
+
+    getMiniServerLogs(trail: number = 100): Promise<string> {
+        return new Promise((resolve, reject) => {
+            exec(`docker logs ${this.orgName} -n ${trail > 0 ? trail : 'all'}`, (error, stdout, stderror) => {
+                if (error) reject(stderror);
+                resolve(stdout.trim() ? stdout.trim() : stderror.trim());
+            })
+        })
+    }
+
+    getOrdererCaServerLogs(trail: number = 100): Promise<string> {
+        return new Promise((resolve, reject) => {
+            exec(`docker logs ca_orderer_${this.orgName} -n ${trail > 0 ? trail : 'all'}`, (error, stdout, stderror) => {
+                if (error) reject(stderror);
+                resolve(stdout.trim() ? stdout.trim() : stderror.trim());
+            })
+        })
+    }
+
+    getPeerCaServerLogs(trail: number = 100): Promise<string> {
+        return new Promise((resolve, reject) => {
+            exec(`docker logs ca_${this.orgName} -n ${trail > 0 ? trail : 'all'}`, (error, stdout, stderror) => {
+                if (error) reject(stderror);
+                resolve(stdout.trim() ? stdout.trim() : stderror.trim());
+            })
+        })
+    }
+
+    getOrdererLogs(trail: number = 100): Promise<string> {
+        return new Promise((resolve, reject) => {
+            exec(`docker logs orderer.${this.orgName}.com -n ${trail > 0 ? trail : 'all'}`, (error, stdout, stderror) => {
+                if (error) reject(stderror);
+                resolve(stdout.trim() ? stdout.trim() : stderror.trim());
+            })
+        })
+    }
+
+    getPeerLogs(trail: number = 100): Promise<string> {
+        return new Promise((resolve, reject) => {
+            exec(`docker logs ${this.orgName}.com -n ${trail > 0 ? trail : 'all'}`, (error, stdout, stderror) => {
+                if (error) reject(stderror);
+                resolve(stdout.trim() ? stdout.trim() : stderror.trim());
+            })
+        })
+    }
+
+}
 
 
 export class Chaincode {

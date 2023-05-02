@@ -4,6 +4,7 @@ export type CA_ARG = {
     caOperationPort: number;
     caOrdererPort: number;
     caOrdererOperationPort: number;
+    hostname?: string
 }
 
 export type ORDERER_ARG = {
@@ -13,7 +14,8 @@ export type ORDERER_ARG = {
     operations: number;
     caOrdererUsername: string;
     caOrdererPassword: string;
-    caOrdererPort: number
+    caOrdererPort: number;
+    hostname: string
 }
 
 export type PEER_ARG = {
@@ -22,6 +24,7 @@ export type PEER_ARG = {
     password: string;
     peerPort: string;
     caPort: string;
+    hostname: string
 }
 
 export type PEER_ENV = {

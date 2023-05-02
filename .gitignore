@@ -49,6 +49,8 @@ src/config/*
 # TypeScript v1 declaration files
 typings/
 
+setup/
+reset.sh
 # TypeScript cache
 *.tsbuildinfo
 

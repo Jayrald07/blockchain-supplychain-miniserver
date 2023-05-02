@@ -3,7 +3,7 @@ import express, { NextFunction } from "express";
 import cors from "cors";
 import getPort from "./getPort";
 import sql3, { sqlite3 } from "sqlite3";
-import { Chaincode, createCa, createOrderer, createOrg } from "./utils/shell";
+import { Chaincode, HLFComponents, createCa, createOrderer, createOrg } from "./utils/shell";
 import { sleep } from "./utils/general";
 import fs from "fs";
 import DB_Config from "./utils/db";
@@ -69,7 +69,7 @@ app.get("/ping", async (req: express.Request, res: express.Response, next: NextF
 });
 
 app.post("/initialize", async (req: express.Request, res) => {
-  const { orgName, username, password, id } = req.body;
+  const { orgName, username, password, id, hostname } = req.body;
   console.log(process.cwd());
 
   let db: sql3.Database = app.get("db")
@@ -95,27 +95,28 @@ app.post("/initialize", async (req: express.Request, res) => {
 
 
     ioServer.emit("createCa", { message: "Done", details: { name: "Creating CA server", status: false, position: 1 } });
-    await createCa({ orgName, caPort, caOperationPort, caOrdererPort, caOrdererOperationPort });
+    await createCa({ orgName, caPort, caOperationPort, caOrdererPort, caOrdererOperationPort, hostname });
     ioServer.emit("createCa", { message: "Done", details: { name: "CA server created", status: true, position: 1 } });
 
 
     await sleep(2000);
 
     ioServer.emit("createOrderer", { message: "Done", details: { name: "Creating orderer node", status: false, position: 2 } });
-    await createOrderer({ orgName, general, admin, operations, caOrdererUsername: "admin", caOrdererPassword: "adminpw", caOrdererPort });
+    await createOrderer({ orgName, general, admin, operations, caOrdererUsername: "admin", caOrdererPassword: "adminpw", caOrdererPort, hostname });
     ioServer.emit("createOrderer", { message: "Done", details: { name: "Orderer node created", status: true, position: 2 } });
 
     await sleep(2000);
 
     ioServer.emit("createOrg", { message: "Done", details: { name: "Creating peer node", status: false, position: 3 } });
-    await createOrg({ orgName, username, password, peerPort: port, caPort })
+    await createOrg({ orgName, username, password, peerPort: port, caPort, hostname })
     ioServer.emit("createOrg", { message: "Done", details: { name: "Peer node created", status: true, position: 3 } });
 
 
     ioServer.emit("finalize", { message: "Done", details: { name: "Finalizing nodes configuration", status: false, position: 4 } })
     db.serialize(function () {
-      let stmt = db.prepare("INSERT INTO config VALUES(?,?),(?,?),(?,?),(?,?),(?,?),(?,?),(?,?),(?,?),(?,?)");
+      let stmt = db.prepare("INSERT INTO config VALUES(?,?),(?,?),(?,?),(?,?),(?,?),(?,?),(?,?),(?,?),(?,?),(?,?)");
       stmt.run("ID", id,
+        "ORG_NAME", orgName,
         "PEER_PORT", port,
         "ORDERER_GENERAL_PORT", general,
         "ORDERER_ADMIN_PORT", admin,
@@ -669,6 +670,40 @@ app.post("/ownAsset", async (req, res) => {
     res.send(e);
   }
 })
+
+app.post("/logsOf", async (req: any, res) => {
+  try {
+    const { count, component } = req.body;
+    const orgName = await DB.getValueByName("ORG_NAME");
+    const hlf = new HLFComponents(orgName[0].value)
+    let logs = '';
+
+    switch (component) {
+      case 'MINI':
+        logs = await hlf.getMiniServerLogs(count);
+        break;
+      case 'CA_ORDERER':
+        logs = await hlf.getOrdererCaServerLogs(count);
+        break;
+      case 'CA_PEER':
+        logs = await hlf.getPeerCaServerLogs(count);
+        break;
+      case 'ORDERER':
+        logs = await hlf.getOrdererLogs(count);
+        break;
+      case 'PEER':
+        logs = await hlf.getPeerLogs(count);
+        break;
+      default:
+        logs = 'hapi hapi hapi';
+        break;
+    }
+
+    res.send({ message: "Done", details: logs })
+  } catch (error: any) {
+    res.send({ message: "Error", details: error.message })
+  }
+});
 
 server.listen(8012, (): void => {
   console.log("Listening for coming request...");
