@@ -469,9 +469,9 @@ app.post("/initializechaincode", async (req, res) => {
     const PORT = await DB.getValueByName("PEER_PORT");
     const ORDERER_GENERAL_PORT = await DB.getValueByName("ORDERER_GENERAL_PORT");
 
-    const chaincode = new Chaincode({ ORG_NAME: orgName, HOST: `${hostname}.com`, PORT: PORT[0].value })
+    const chaincode = new Chaincode({ ORG_NAME: orgName, HOST: `${hostname}`, PORT: PORT[0].value })
     chaincode.setEnv("HOST", `${hostname}`);
-    chaincode.setEnv("ORDERER_HOST", `orderer.${hostname}`);
+    chaincode.setEnv("ORDERER_HOST", `${hostname}`);
     chaincode.setEnv("ORDERER_GENERAL_PORT", ORDERER_GENERAL_PORT[0].value);
     chaincode.setEnv("SEQUENCE", 1);
     chaincode.setEnv("VERSION", "1.0");
