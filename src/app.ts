@@ -158,11 +158,11 @@ app.post("/channel", async (req: express.Request, res: express.Response): Promis
 
 // Get all channels that peer joined in
 app.get("/channels", async (req: express.Request, res: express.Response, next: NextFunction): Promise<void> => {
-  const { orgName } = req.query;
+  const { orgName, host } = req.query;
 
   const peer = await DB.getValueByName("PEER_PORT");
 
-  exec(`${process.cwd()}/scripts/getChannels.sh ${orgName} ${peer[0].value}`, (error, stdout, stderror) => {
+  exec(`${process.cwd()}/scripts/getChannels.sh ${orgName} ${peer[0].value} ${host}`, (error, stdout, stderror) => {
     try {
       if (error) return res.send({ message: "Getting channels error", details: stderror, status: "error" });
 
@@ -257,7 +257,7 @@ app.post("/signAndUpdateChannel", async (req, res) => {
   const general = await DB.getValueByName("ORDERER_GENERAL_PORT");
 
   fs.writeFileSync(`${process.cwd()}/organizations/channel-artifacts/_update_in_envelope.pb`, Buffer.from(updateBlock))
-
+  console.log({ channelId })
   exec(`${process.cwd()}/scripts/updateChannel.sh ${orgName} ${peer[0].value} ${channelId} ${general[0].value} 0 ${orgType} ${host}`, (error, stdout, stderror) => {
     console.log({ error, stdout, stderror })
 
