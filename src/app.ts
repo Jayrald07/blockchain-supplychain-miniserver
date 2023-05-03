@@ -191,7 +191,7 @@ app.get("/getConfig", (req, res) => {
 
 app.post("/getChannelConfig", async (req, res) => {
   const { orgName, channelId, host, publicKey } = req.body;
-
+  console.log({ body: req.body })
   try {
     const peer = await DB.getValueByName("PEER_PORT");
     const general = await DB.getValueByName("ORDERER_GENERAL_PORT");
