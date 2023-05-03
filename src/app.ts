@@ -336,15 +336,15 @@ app.post("/setup-collections-config", async (req, res) => {
 });
 
 app.post("/installchaincode", async (req, res) => {
-  const { channel, hostname } = req.body;
+  const { channel, orgName, hostname } = req.body;
 
   try {
     const PORT = await DB.getValueByName("PEER_PORT");
     const ORDERER_GENERAL_PORT = await DB.getValueByName("ORDERER_GENERAL_PORT");
 
-    const chaincode = new Chaincode({ ORG_NAME: hostname, HOST: `${hostname}.com`, PORT: PORT[0].value })
-    chaincode.setEnv("HOST", `${hostname}.com`);
-    chaincode.setEnv("ORDERER_HOST", `orderer.${hostname}.com`);
+    const chaincode = new Chaincode({ ORG_NAME: orgName, HOST: `${hostname}`, PORT: PORT[0].value })
+    chaincode.setEnv("HOST", `${hostname}`);
+    chaincode.setEnv("ORDERER_HOST", `${hostname}`);
     chaincode.setEnv("ORDERER_GENERAL_PORT", ORDERER_GENERAL_PORT[0].value);
     chaincode.setEnv("SEQUENCE", 1);
     chaincode.setEnv("VERSION", "1.0");
@@ -362,15 +362,15 @@ app.post("/installchaincode", async (req, res) => {
 });
 
 app.post("/approvechaincode", async (req, res) => {
-  const { channel, hostname } = req.body;
+  const { channel, orgName, hostname } = req.body;
 
   try {
     const PORT = await DB.getValueByName("PEER_PORT");
     const ORDERER_GENERAL_PORT = await DB.getValueByName("ORDERER_GENERAL_PORT");
 
-    const chaincode = new Chaincode({ ORG_NAME: hostname, HOST: `${hostname}.com`, PORT: PORT[0].value })
-    chaincode.setEnv("HOST", `${hostname}.com`);
-    chaincode.setEnv("ORDERER_HOST", `orderer.${hostname}.com`);
+    const chaincode = new Chaincode({ ORG_NAME: orgName, HOST: `${hostname}`, PORT: PORT[0].value })
+    chaincode.setEnv("HOST", `${hostname}`);
+    chaincode.setEnv("ORDERER_HOST", `${hostname}`);
     chaincode.setEnv("ORDERER_GENERAL_PORT", ORDERER_GENERAL_PORT[0].value);
     chaincode.setEnv("SEQUENCE", 1);
     chaincode.setEnv("VERSION", "1.0");
@@ -406,15 +406,15 @@ app.post("/savetemporaryca", async (req, res) => {
 });
 
 app.post("/checkcommitreadiness", async (req, res) => {
-  const { channel, hostname } = req.body;
+  const { channel, orgName, hostname } = req.body;
 
   try {
     const PORT = await DB.getValueByName("PEER_PORT");
     const ORDERER_GENERAL_PORT = await DB.getValueByName("ORDERER_GENERAL_PORT");
 
-    const chaincode = new Chaincode({ ORG_NAME: hostname, HOST: `${hostname}.com`, PORT: PORT[0].value })
-    chaincode.setEnv("HOST", `${hostname}.com`);
-    chaincode.setEnv("ORDERER_HOST", `orderer.${hostname}.com`);
+    const chaincode = new Chaincode({ ORG_NAME: orgName, HOST: `${hostname}`, PORT: PORT[0].value })
+    chaincode.setEnv("HOST", `${hostname}`);
+    chaincode.setEnv("ORDERER_HOST", `${hostname}`);
     chaincode.setEnv("ORDERER_GENERAL_PORT", ORDERER_GENERAL_PORT[0].value);
     chaincode.setEnv("SEQUENCE", 1);
     chaincode.setEnv("VERSION", "1.0");
@@ -432,15 +432,15 @@ app.post("/checkcommitreadiness", async (req, res) => {
 });
 
 app.post("/commitchaincode", async (req, res) => {
-  const { channel, hostname, externals } = req.body;
+  const { channel, orgName, hostname, externals } = req.body;
 
   try {
     const PORT = await DB.getValueByName("PEER_PORT");
     const ORDERER_GENERAL_PORT = await DB.getValueByName("ORDERER_GENERAL_PORT");
 
-    const chaincode = new Chaincode({ ORG_NAME: hostname, HOST: `${hostname}.com`, PORT: PORT[0].value })
-    chaincode.setEnv("HOST", `${hostname}.com`);
-    chaincode.setEnv("ORDERER_HOST", `orderer.${hostname}.com`);
+    const chaincode = new Chaincode({ ORG_NAME: orgName, HOST: `${hostname}`, PORT: PORT[0].value })
+    chaincode.setEnv("HOST", `${hostname}`);
+    chaincode.setEnv("ORDERER_HOST", `${hostname}`);
     chaincode.setEnv("ORDERER_GENERAL_PORT", ORDERER_GENERAL_PORT[0].value);
     chaincode.setEnv("SEQUENCE", 1);
     chaincode.setEnv("VERSION", "1.0");
@@ -448,7 +448,7 @@ app.post("/commitchaincode", async (req, res) => {
     chaincode.setEnv("CHAINCODE_NAME", "supplychain");
 
     for (let host of externals) {
-      chaincode.setEnv("EXTERNAL_HOST", `${host.host}.com`);
+      chaincode.setEnv("EXTERNAL_HOST", `${host.host}`);
       chaincode.setEnv("EXTERNAL_PEER_PORT", host.port);
     }
 
@@ -463,15 +463,15 @@ app.post("/commitchaincode", async (req, res) => {
 });
 
 app.post("/initializechaincode", async (req, res) => {
-  const { channel, hostname, externals } = req.body;
+  const { channel, orgName, hostname, externals } = req.body;
 
   try {
     const PORT = await DB.getValueByName("PEER_PORT");
     const ORDERER_GENERAL_PORT = await DB.getValueByName("ORDERER_GENERAL_PORT");
 
-    const chaincode = new Chaincode({ ORG_NAME: hostname, HOST: `${hostname}.com`, PORT: PORT[0].value })
-    chaincode.setEnv("HOST", `${hostname}.com`);
-    chaincode.setEnv("ORDERER_HOST", `orderer.${hostname}.com`);
+    const chaincode = new Chaincode({ ORG_NAME: orgName, HOST: `${hostname}.com`, PORT: PORT[0].value })
+    chaincode.setEnv("HOST", `${hostname}`);
+    chaincode.setEnv("ORDERER_HOST", `orderer.${hostname}`);
     chaincode.setEnv("ORDERER_GENERAL_PORT", ORDERER_GENERAL_PORT[0].value);
     chaincode.setEnv("SEQUENCE", 1);
     chaincode.setEnv("VERSION", "1.0");
@@ -479,7 +479,7 @@ app.post("/initializechaincode", async (req, res) => {
     chaincode.setEnv("CHAINCODE_NAME", "supplychain");
 
     for (let host of externals) {
-      chaincode.setEnv("EXTERNAL_HOST", `${host.host}.com`);
+      chaincode.setEnv("EXTERNAL_HOST", `${host.host}`);
       chaincode.setEnv("EXTERNAL_PEER_PORT", host.port);
     }
 
