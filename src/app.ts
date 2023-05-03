@@ -196,11 +196,11 @@ app.post("/getChannelConfig", async (req, res) => {
     const peer = await DB.getValueByName("PEER_PORT");
     const general = await DB.getValueByName("ORDERER_GENERAL_PORT");
 
-    exec(`${process.cwd()}/scripts/getChannelConfig.sh ${orgName} ${peer[0].value} ${channelId} ${general[0].value} ${host}`, (error, stdout, stderr) => {
+    exec(`${process.cwd()}/scripts/getChannelConfig.sh ${orgName} ${peer[0].value} ${channelId} ${general[0].value} ${host}`, async (error, stdout, stderr) => {
       console.log({ error, stdout, stderr })
       if (error) throw new Error(stderr);
-      let config = encryptData(publicKey, fs.readFileSync(`${process.cwd()}/organizations/channel-artifacts/config_block.pb`).toString());
-      let ordererTlsCa = encryptData(publicKey, fs.readFileSync(`${process.cwd()}/organizations/ordererOrganizations/orderer.${orgName}.com/tlsca/tlsca.orderer.${orgName}.com-cert.pem`).toString())
+      let config = await encryptData(publicKey, fs.readFileSync(`${process.cwd()}/organizations/channel-artifacts/config_block.pb`).toString());
+      let ordererTlsCa = await encryptData(publicKey, fs.readFileSync(`${process.cwd()}/organizations/ordererOrganizations/orderer.${orgName}.com/tlsca/tlsca.orderer.${orgName}.com-cert.pem`).toString())
 
       res.send({ message: "Done", details: { config, ordererTlsCa } })
     })
