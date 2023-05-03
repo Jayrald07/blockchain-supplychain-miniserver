@@ -1,4 +1,4 @@
-import openpgp from "openpgp";
+import { createMessage, encrypt, readKey } from "openpgp";
 
 export const sleep = async (ms: number = 3000): Promise<unknown> => {
     return new Promise((resolve, reject) => {
@@ -7,7 +7,7 @@ export const sleep = async (ms: number = 3000): Promise<unknown> => {
 }
 
 export const encryptData = async (publicKey: string, data: string) => {
-    const pkey = await openpgp.readKey({ armoredKey: publicKey });
+    const pkey = await readKey({ armoredKey: publicKey });
 
     const readableStream = new ReadableStream({
         start(controller) {
@@ -16,8 +16,8 @@ export const encryptData = async (publicKey: string, data: string) => {
         }
     });
 
-    const encrypted: any = await openpgp.encrypt({
-        message: await openpgp.createMessage({ text: readableStream }),
+    const encrypted: any = await encrypt({
+        message: await createMessage({ text: readableStream }),
         encryptionKeys: pkey
     })
 
