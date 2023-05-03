@@ -4,7 +4,7 @@ import cors from "cors";
 import getPort from "./getPort";
 import sql3, { sqlite3 } from "sqlite3";
 import { Chaincode, HLFComponents, createCa, createOrderer, createOrg } from "./utils/shell";
-import { sleep } from "./utils/general";
+import { encryptData, sleep } from "./utils/general";
 import fs from "fs";
 import DB_Config from "./utils/db";
 import { blockchainInit } from "./blockchain";
@@ -13,6 +13,7 @@ import { acceptAssetRequest, closeGRPCConnection, createAsset, getLogs, ownAsset
 import { Client } from "@grpc/grpc-js";
 import { Server } from "socket.io";
 import http from "http";
+import { publicEncrypt } from "crypto";
 
 const app = express();
 const server = http.createServer(app);
@@ -189,7 +190,7 @@ app.get("/getConfig", (req, res) => {
 })
 
 app.post("/getChannelConfig", async (req, res) => {
-  const { orgName, channelId, host } = req.body;
+  const { orgName, channelId, host, publicKey } = req.body;
 
   try {
     const peer = await DB.getValueByName("PEER_PORT");
@@ -198,8 +199,10 @@ app.post("/getChannelConfig", async (req, res) => {
     exec(`${process.cwd()}/scripts/getChannelConfig.sh ${orgName} ${peer[0].value} ${channelId} ${general[0].value} ${host}`, (error, stdout, stderr) => {
       console.log({ error, stdout, stderr })
       if (error) throw new Error(stderr);
+      let config = encryptData(publicKey, fs.readFileSync(`${process.cwd()}/organizations/channel-artifacts/config_block.pb`).toString());
+      let ordererTlsCa = encryptData(publicKey, fs.readFileSync(`${process.cwd()}/organizations/ordererOrganizations/orderer.${orgName}.com/tlsca/tlsca.orderer.${orgName}.com-cert.pem`).toString())
 
-      res.send({ message: "Done", details: { config: fs.readFileSync(`${process.cwd()}/organizations/channel-artifacts/config_block.pb`), ordererTlsCa: fs.readFileSync(`${process.cwd()}/organizations/ordererOrganizations/orderer.${orgName}.com/tlsca/tlsca.orderer.${orgName}.com-cert.pem`) } })
+      res.send({ message: "Done", details: { config, ordererTlsCa } })
     })
 
   } catch (err: any) {
