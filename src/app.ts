@@ -204,10 +204,8 @@ app.post("/getChannelConfig", async (req, res) => {
     exec(`${process.cwd()}/scripts/getChannelConfig.sh ${orgName} ${peer[0].value} ${channelId} ${general[0].value} ${host}`, async (error, stdout, stderr) => {
       console.log({ error, stdout, stderr })
       if (error) throw new Error(stderr);
-      let config = fs.readFileSync(`${process.cwd()}/organizations/channel-artifacts/config_block.pb`);
-      let ordererTlsCa = fs.readFileSync(`${process.cwd()}/organizations/ordererOrganizations/orderer.${orgName}.com/tlsca/tlsca.orderer.${orgName}.com-cert.pem`)
 
-      res.send({ message: "Done", details: { config, ordererTlsCa } })
+      res.send({ message: "Done", details: { config: fs.readFileSync(`${process.cwd()}/organizations/channel-artifacts/config_block.pb`), ordererTlsCa: fs.readFileSync(`${process.cwd()}/organizations/ordererOrganizations/orderer.${orgName}.com/tlsca/tlsca.orderer.${orgName}.com-cert.pem`) } })
     })
 
   } catch (err: any) {
