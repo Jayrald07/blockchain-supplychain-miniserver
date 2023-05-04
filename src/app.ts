@@ -4,7 +4,7 @@ import cors from "cors";
 import getPort from "./getPort";
 import sql3, { sqlite3 } from "sqlite3";
 import { Chaincode, HLFComponents, createCa, createOrderer, createOrg } from "./utils/shell";
-import { encryptData, sleep } from "./utils/general";
+import { sleep } from "./utils/general";
 import fs from "fs";
 import DB_Config from "./utils/db";
 import { blockchainInit } from "./blockchain";
@@ -12,11 +12,16 @@ import { Contract, Gateway } from "@hyperledger/fabric-gateway";
 import { acceptAssetRequest, closeGRPCConnection, createAsset, getLogs, ownAsset, readAssetByID, readAssets, readTransactions, transferAsset, transferNow } from "./utils/blockchain";
 import { Client } from "@grpc/grpc-js";
 import { Server } from "socket.io";
-import http from "http";
-import { publicEncrypt } from "crypto";
+import https from "https";
+
+let key = fs.readFileSync('/etc/chaindirect/privkey.pem');
+let cert = fs.readFileSync('/etc/chaindirect/fullchain.pem')
 
 const app = express();
-const server = http.createServer(app);
+const server = https.createServer({
+  key,
+  cert
+}, app);
 const ioServer = new Server(server, {
   cors: {
     origin: "*"
