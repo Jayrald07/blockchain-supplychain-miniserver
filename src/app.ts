@@ -504,13 +504,13 @@ app.post("/initializechaincode", async (req, res) => {
 
 app.post("/logs", async (req, res) => {
 
-  const { channelId, orgName, start, offset } = req.body;
+  const { channelId, orgName, start, offset, host } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
 
   try {
 
-    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
+    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
 
     res.status(200).json(await getLogs(blockchain?.[2] as Contract, start, offset))
 
@@ -525,13 +525,13 @@ app.post("/logs", async (req, res) => {
 
 app.post("/createAsset", async (req, res) => {
 
-  const { channelId, orgName, assetId, tags } = req.body;
+  const { channelId, orgName, assetId, tags, host } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
 
   try {
 
-    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
+    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
 
     res.status(200).json(await createAsset(blockchain?.[2] as Contract, assetId, JSON.stringify(tags)))
 
@@ -545,13 +545,13 @@ app.post("/createAsset", async (req, res) => {
 
 app.post("/readAsset", async (req, res) => {
 
-  const { channelId, orgName, assetId, owner } = req.body;
+  const { channelId, orgName, assetId, owner, host } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
   const ordererGeneralPort = await DB.getValueByName("ORDERER_GENERAL_PORT")
 
   try {
-    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
+    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
 
     res.status(200).json(await readAssetByID(blockchain?.[2] as Contract, assetId))
 
@@ -565,12 +565,12 @@ app.post("/readAsset", async (req, res) => {
 })
 
 app.post("/getAssets", async (req, res) => {
-  const { channelId, orgName } = req.body;
+  const { channelId, orgName, host } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
 
   try {
-    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
+    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
 
     res.status(200).json(await readAssets(blockchain?.[2] as Contract))
 
@@ -584,12 +584,12 @@ app.post("/getAssets", async (req, res) => {
 
 app.post("/transferAsset", async (req, res) => {
 
-  const { channelId, orgName, transactionId, assetIds, newOwnerMSP } = req.body;
+  const { channelId, orgName, transactionId, assetIds, newOwnerMSP, host } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
 
   try {
-    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
+    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
 
     res.status(200).json(await transferAsset(blockchain?.[2] as Contract, transactionId, assetIds, newOwnerMSP))
 
@@ -603,12 +603,12 @@ app.post("/transferAsset", async (req, res) => {
 
 app.post("/readAssetCollection", async (req, res) => {
 
-  const { channelId, orgName } = req.body;
+  const { channelId, orgName, host } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
 
   try {
-    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
+    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
 
     res.status(200).json(await readTransactions(blockchain?.[2] as Contract))
 
@@ -622,12 +622,12 @@ app.post("/readAssetCollection", async (req, res) => {
 
 app.post("/acceptAsset", async (req, res) => {
 
-  const { channelId, orgName, transactionId } = req.body;
+  const { channelId, orgName, transactionId, host } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
 
   try {
-    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
+    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
 
     res.status(200).json(await acceptAssetRequest(blockchain?.[2] as Contract, transactionId))
 
@@ -641,12 +641,12 @@ app.post("/acceptAsset", async (req, res) => {
 
 app.post("/transferNow", async (req, res) => {
 
-  const { channelId, orgName, transactionId } = req.body;
+  const { channelId, orgName, transactionId, host } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
 
   try {
-    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
+    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
 
     res.status(200).json(await transferNow(blockchain?.[2] as Contract, transactionId))
 
@@ -660,12 +660,12 @@ app.post("/transferNow", async (req, res) => {
 
 app.post("/ownAsset", async (req, res) => {
 
-  const { channelId, orgName, transactionId } = req.body;
+  const { channelId, orgName, transactionId, host } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
 
   try {
-    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value);
+    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
 
     res.status(200).json(await ownAsset(blockchain?.[2] as Contract, transactionId))
 
