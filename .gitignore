@@ -54,6 +54,8 @@ reset.sh
 # TypeScript cache
 *.tsbuildinfo
 
+dockerbuild.sh
+
 # Optional npm cache directory
 .npm
 
