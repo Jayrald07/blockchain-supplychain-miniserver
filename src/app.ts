@@ -9,7 +9,7 @@ import fs from "fs";
 import DB_Config from "./utils/db";
 import { blockchainInit } from "./blockchain";
 import { Contract, Gateway } from "@hyperledger/fabric-gateway";
-import { acceptAssetRequest, closeGRPCConnection, createAsset, getLogs, ownAsset, readAssetByID, readAssets, readTransactions, transferAsset, transferNow } from "./utils/blockchain";
+import { acceptAssetRequest, acceptReturnTransaction, cancelTransaction, closeGRPCConnection, createAsset, getLogs, ownAsset, readAssetByID, readAssets, readTransactions, removeAsset, returnTransaction, transferAsset, transferNow, updateAsset } from "./utils/blockchain";
 import { Client } from "@grpc/grpc-js";
 import { Server } from "socket.io";
 import https from "https";
@@ -530,7 +530,6 @@ app.post("/createAsset", async (req, res) => {
   const peerPort = await DB.getValueByName("PEER_PORT")
 
   try {
-
     const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
 
     res.status(200).json(await createAsset(blockchain?.[2] as Contract, assetId, JSON.stringify(tags)))
@@ -668,6 +667,101 @@ app.post("/ownAsset", async (req, res) => {
     const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
 
     res.status(200).json(await ownAsset(blockchain?.[2] as Contract, transactionId))
+
+    if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
+
+  } catch (e) {
+    console.log(e);
+    res.send(e);
+  }
+})
+
+app.post("/updateAsset", async (req, res) => {
+
+  const { channelId, orgName, assetId, tags, host } = req.body;
+
+  const peerPort = await DB.getValueByName("PEER_PORT")
+
+  try {
+    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
+
+    res.status(200).json(await updateAsset(blockchain?.[2] as Contract, assetId, JSON.stringify(tags)))
+
+    if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
+
+  } catch (e) {
+    console.log(e);
+    res.send(e);
+  }
+})
+
+app.post("/removeAsset", async (req, res) => {
+
+  const { channelId, orgName, assetIds, host } = req.body;
+
+  const peerPort = await DB.getValueByName("PEER_PORT")
+
+  try {
+    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
+
+    res.status(200).json(await removeAsset(blockchain?.[2] as Contract, JSON.stringify(assetIds)))
+
+    if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
+
+  } catch (e) {
+    console.log(e);
+    res.send(e);
+  }
+})
+
+app.post("/cancelTransaction", async (req, res) => {
+
+  const { channelId, orgName, transactionId, host } = req.body;
+
+  const peerPort = await DB.getValueByName("PEER_PORT")
+
+  try {
+    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
+
+    res.status(200).json(await cancelTransaction(blockchain?.[2] as Contract, transactionId))
+
+    if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
+
+  } catch (e) {
+    console.log(e);
+    res.send(e);
+  }
+})
+
+app.post("/returnTransaction", async (req, res) => {
+
+  const { channelId, orgName, transactionId, referTransactionId, oldOwnerMSP, reason, host } = req.body;
+
+  const peerPort = await DB.getValueByName("PEER_PORT")
+
+  try {
+    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
+
+    res.status(200).json(await returnTransaction(blockchain?.[2] as Contract, transactionId, referTransactionId, oldOwnerMSP, reason))
+
+    if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
+
+  } catch (e) {
+    console.log(e);
+    res.send(e);
+  }
+})
+
+app.post("/acceptReturnTransaction", async (req, res) => {
+
+  const { channelId, orgName, transactionId, host } = req.body;
+
+  const peerPort = await DB.getValueByName("PEER_PORT")
+
+  try {
+    const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
+
+    res.status(200).json(await acceptReturnTransaction(blockchain?.[2] as Contract, transactionId))
 
     if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
 

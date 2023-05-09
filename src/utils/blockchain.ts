@@ -185,6 +185,96 @@ export async function ownAsset(contract: Contract, transactionId: string): Promi
 
 }
 
+export async function updateAsset(contract: Contract, assetId: string, tags: string): Promise<any> {
+
+    const commit: SubmittedTransaction = await contract.submitAsync('UpdatePrivateAsset', {
+        arguments: [assetId, tags],
+    });
+
+    const oldOwner = utf8Decoder.decode(commit.getResult());
+
+    const status = await commit.getStatus();
+
+    if (!status.successful) {
+        throw new Error(`Transaction ${status.transactionId} failed to commit with status code ${status.code}`);
+    }
+
+    return oldOwner
+
+}
+
+export async function removeAsset(contract: Contract, assetIds: string): Promise<any> {
+
+    const commit: SubmittedTransaction = await contract.submitAsync('RemovePrivateAsset', {
+        arguments: [assetIds],
+    });
+
+    const oldOwner = utf8Decoder.decode(commit.getResult());
+
+    const status = await commit.getStatus();
+
+    if (!status.successful) {
+        throw new Error(`Transaction ${status.transactionId} failed to commit with status code ${status.code}`);
+    }
+
+    return oldOwner
+
+}
+
+export async function cancelTransaction(contract: Contract, transactionId: string): Promise<any> {
+
+    const commit: SubmittedTransaction = await contract.submitAsync('CancelTransaction', {
+        arguments: [transactionId],
+    });
+
+    const oldOwner = utf8Decoder.decode(commit.getResult());
+
+    const status = await commit.getStatus();
+
+    if (!status.successful) {
+        throw new Error(`Transaction ${status.transactionId} failed to commit with status code ${status.code}`);
+    }
+
+    return oldOwner
+
+}
+
+export async function returnTransaction(contract: Contract, transactionId: string, referTransactionId: string, oldOwnerMSP: string, reason: string): Promise<any> {
+
+    const commit: SubmittedTransaction = await contract.submitAsync('ReturnTransaction', {
+        arguments: [transactionId, referTransactionId, oldOwnerMSP, reason],
+    });
+
+    const oldOwner = utf8Decoder.decode(commit.getResult());
+
+    const status = await commit.getStatus();
+
+    if (!status.successful) {
+        throw new Error(`Transaction ${status.transactionId} failed to commit with status code ${status.code}`);
+    }
+
+    return oldOwner
+
+}
+
+export async function acceptReturnTransaction(contract: Contract, transactionId: string): Promise<any> {
+
+    const commit: SubmittedTransaction = await contract.submitAsync('AcceptReturnTransaction', {
+        arguments: [transactionId],
+    });
+
+    const oldOwner = utf8Decoder.decode(commit.getResult());
+
+    const status = await commit.getStatus();
+
+    if (!status.successful) {
+        throw new Error(`Transaction ${status.transactionId} failed to commit with status code ${status.code}`);
+    }
+
+    return oldOwner
+
+}
+
 
 export async function closeGRPCConnection(gateway: Gateway, client: grpc.Client): Promise<RESPONSE> {
     gateway.close();
