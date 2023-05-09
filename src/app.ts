@@ -583,14 +583,14 @@ app.post("/getAssets", async (req, res) => {
 
 app.post("/transferAsset", async (req, res) => {
 
-  const { channelId, orgName, transactionId, assetIds, newOwnerMSP, host } = req.body;
+  const { channelId, orgName, fromId, toId, transactionId, assetIds, newOwnerMSP, host } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
 
   try {
     const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
 
-    res.status(200).json(await transferAsset(blockchain?.[2] as Contract, transactionId, assetIds, newOwnerMSP))
+    res.status(200).json(await transferAsset(blockchain?.[2] as Contract, fromId, toId, transactionId, assetIds, newOwnerMSP))
 
     if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
 

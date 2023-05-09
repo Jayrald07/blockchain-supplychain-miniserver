@@ -114,10 +114,10 @@ export async function createAsset(contract: Contract, assetId: string, tags: str
     return response
 }
 
-export async function transferAsset(contract: Contract, transactionId: string, assetIds: string[], newOwnerMSP: string): Promise<any> {
+export async function transferAsset(contract: Contract, fromId: string, toId: strin, transactionId: string, assetIds: string[], newOwnerMSP: string): Promise<any> {
 
     const commit: SubmittedTransaction = await contract.submitAsync('CreatePrivateTransaction', {
-        arguments: [transactionId, JSON.stringify(assetIds), newOwnerMSP],
+        arguments: [fromId, toId, transactionId, JSON.stringify(assetIds), newOwnerMSP],
     });
 
     const response = utf8Decoder.decode(commit.getResult());
