@@ -9,7 +9,7 @@ import fs from "fs";
 import DB_Config from "./utils/db";
 import { blockchainInit } from "./blockchain";
 import { Contract, Gateway } from "@hyperledger/fabric-gateway";
-import { acceptAssetRequest, acceptReturnTransaction, cancelTransaction, closeGRPCConnection, createAsset, getBackAssets, getLogs, ownAsset, readAssetByID, readAssets, readTransactions, rejectTransaction, removeAsset, returnTransaction, transferAsset, transferNow, updateAsset } from "./utils/blockchain";
+import { acceptAssetRequest, cancelTransaction, closeGRPCConnection, createAsset, getBackAssets, getLogs, ownAsset, readAssetByID, readAssets, readTransactions, rejectTransaction, removeAsset, returnTransaction, transferAsset, transferNow, updateAsset } from "./utils/blockchain";
 import { Client } from "@grpc/grpc-js";
 import { Server } from "socket.io";
 import https from "https";
