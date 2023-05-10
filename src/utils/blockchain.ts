@@ -101,10 +101,10 @@ export async function readTransactions(contract: Contract): Promise<any> {
     return JSON.parse(resultJson);
 }
 
-export async function createAsset(contract: Contract, assetId: string, tags: string): Promise<any> {
+export async function createAsset(contract: Contract, orgId: string, assetId: string, tags: string): Promise<any> {
 
     const committed = await contract.submit("CreatePrivateAsset", {
-        arguments: [assetId, JSON.stringify(tags)]
+        arguments: [orgId, assetId, JSON.stringify(tags)]
     })
 
     const response = utf8Decoder.decode(committed);
@@ -239,10 +239,10 @@ export async function cancelTransaction(contract: Contract, transactionId: strin
 
 }
 
-export async function returnTransaction(contract: Contract, transactionId: string, referTransactionId: string, oldOwnerMSP: string, reason: string): Promise<any> {
+export async function rejectTransaction(contract: Contract, transactionId: string): Promise<any> {
 
-    const commit: SubmittedTransaction = await contract.submitAsync('ReturnTransaction', {
-        arguments: [transactionId, referTransactionId, oldOwnerMSP, reason],
+    const commit: SubmittedTransaction = await contract.submitAsync('RejectTransaction', {
+        arguments: [transactionId],
     });
 
     const oldOwner = utf8Decoder.decode(commit.getResult());
@@ -257,9 +257,27 @@ export async function returnTransaction(contract: Contract, transactionId: strin
 
 }
 
-export async function acceptReturnTransaction(contract: Contract, transactionId: string): Promise<any> {
+export async function returnTransaction(contract: Contract, transactionId: string, reason: string): Promise<any> {
 
-    const commit: SubmittedTransaction = await contract.submitAsync('AcceptReturnTransaction', {
+    const commit: SubmittedTransaction = await contract.submitAsync('ReturnTransaction', {
+        arguments: [transactionId, reason],
+    });
+
+    const oldOwner = utf8Decoder.decode(commit.getResult());
+
+    const status = await commit.getStatus();
+
+    if (!status.successful) {
+        throw new Error(`Transaction ${status.transactionId} failed to commit with status code ${status.code}`);
+    }
+
+    return oldOwner
+
+}
+
+export async function getBackAssets(contract: Contract, transactionId: string): Promise<any> {
+
+    const commit: SubmittedTransaction = await contract.submitAsync('GetBackAssets', {
         arguments: [transactionId],
     });
 
