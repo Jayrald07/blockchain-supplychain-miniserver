@@ -525,14 +525,14 @@ app.post("/logs", async (req, res) => {
 
 app.post("/createAsset", async (req, res) => {
 
-  const { channelId, orgName, assetId, orgId, tags, host } = req.body;
+  const { channelId, orgName, assetId, orgId, tags, subAssetIds, host } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
 
   try {
     const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
 
-    res.status(200).json(await createAsset(blockchain?.[2] as Contract, orgId, assetId, JSON.stringify(tags)))
+    res.status(200).json(await createAsset(blockchain?.[2] as Contract, orgId, assetId, JSON.stringify(tags), JSON.stringify(subAssetIds)))
 
     if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
 
@@ -735,14 +735,14 @@ app.post("/cancelTransaction", async (req, res) => {
 
 app.post("/rejectTransaction", async (req, res) => {
 
-  const { channelId, orgName, transactionId, host } = req.body;
+  const { channelId, orgName, transactionId, reason, host } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
 
   try {
     const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
 
-    res.status(200).json(await rejectTransaction(blockchain?.[2] as Contract, transactionId))
+    res.status(200).json(await rejectTransaction(blockchain?.[2] as Contract, transactionId, reason))
 
     if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
 

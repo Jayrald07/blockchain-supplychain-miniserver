@@ -101,10 +101,10 @@ export async function readTransactions(contract: Contract): Promise<any> {
     return JSON.parse(resultJson);
 }
 
-export async function createAsset(contract: Contract, orgId: string, assetId: string, tags: string): Promise<any> {
+export async function createAsset(contract: Contract, orgId: string, assetId: string, tags: string, subAssetIds: string): Promise<any> {
 
     const committed = await contract.submit("CreatePrivateAsset", {
-        arguments: [orgId, assetId, JSON.stringify(tags)]
+        arguments: [orgId, assetId, tags, subAssetIds]
     })
 
     const response = utf8Decoder.decode(committed);
@@ -239,10 +239,10 @@ export async function cancelTransaction(contract: Contract, transactionId: strin
 
 }
 
-export async function rejectTransaction(contract: Contract, transactionId: string): Promise<any> {
+export async function rejectTransaction(contract: Contract, transactionId: string, reason: string): Promise<any> {
 
     const commit: SubmittedTransaction = await contract.submitAsync('RejectTransaction', {
-        arguments: [transactionId],
+        arguments: [transactionId, reason],
     });
 
     const oldOwner = utf8Decoder.decode(commit.getResult());
