@@ -678,14 +678,14 @@ app.post("/ownAsset", async (req, res) => {
 
 app.post("/updateAsset", async (req, res) => {
 
-  const { channelId, orgName, assetId, tags, host } = req.body;
+  const { channelId, orgName, assetId, tags, subAssetIds, host } = req.body;
 
   const peerPort = await DB.getValueByName("PEER_PORT")
 
   try {
     const blockchain = await blockchainInit(channelId, orgName, peerPort[0].value, host);
 
-    res.status(200).json(await updateAsset(blockchain?.[2] as Contract, assetId, JSON.stringify(tags)))
+    res.status(200).json(await updateAsset(blockchain?.[2] as Contract, assetId, JSON.stringify(tags), JSON.stringify(subAssetIds)))
 
     if (await closeGRPCConnection(blockchain?.[0] as Gateway, blockchain?.[1] as Client)) console.log("Disconnected")
 

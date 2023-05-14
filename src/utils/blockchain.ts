@@ -185,10 +185,10 @@ export async function ownAsset(contract: Contract, transactionId: string): Promi
 
 }
 
-export async function updateAsset(contract: Contract, assetId: string, tags: string): Promise<any> {
+export async function updateAsset(contract: Contract, assetId: string, tags: string, subAssetIds: string): Promise<any> {
 
     const commit: SubmittedTransaction = await contract.submitAsync('UpdatePrivateAsset', {
-        arguments: [assetId, tags],
+        arguments: [assetId, tags, subAssetIds],
     });
 
     const oldOwner = utf8Decoder.decode(commit.getResult());
