@@ -331,19 +331,11 @@ export async function pushAssets(contract: Contract, assets: string): Promise<an
 
 export async function assetProvenance(contract: Contract, assetId: string): Promise<any> {
 
-    const commit: SubmittedTransaction = await contract.submitAsync('GetAssetProvenance', {
-        arguments: [assetId],
-    });
+    const commit = await contract.evaluateTransaction('GetAssetProvenance', assetId);
 
-    const oldOwner = utf8Decoder.decode(commit.getResult());
+    const resultJson = utf8Decoder.decode(commit);
 
-    const status = await commit.getStatus();
-
-    if (!status.successful) {
-        throw new Error(`Transaction ${status.transactionId} failed to commit with status code ${status.code}`);
-    }
-
-    return oldOwner
+    return JSON.parse(resultJson)
 
 }
 
