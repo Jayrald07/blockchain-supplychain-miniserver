@@ -847,7 +847,7 @@ app.post("/assetProvenance", async (req, res) => {
   }
 })
 
-app.post("/getAssets", async (req, res) => {
+app.post("/getAll", async (req, res) => {
 
   const { channelId, orgName, assetId, host } = req.body;
 
