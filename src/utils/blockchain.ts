@@ -329,6 +329,32 @@ export async function pushAssets(contract: Contract, assets: string): Promise<an
 
 }
 
+export async function assetProvenance(contract: Contract, assetId: string): Promise<any> {
+
+    const commit: SubmittedTransaction = await contract.submitAsync('GetAssetProvenance', {
+        arguments: [assetId],
+    });
+
+    const oldOwner = utf8Decoder.decode(commit.getResult());
+
+    const status = await commit.getStatus();
+
+    if (!status.successful) {
+        throw new Error(`Transaction ${status.transactionId} failed to commit with status code ${status.code}`);
+    }
+
+    return oldOwner
+
+}
+
+export async function getAssets(contract: Contract): Promise<any> {
+    const resultBytes = await contract.evaluateTransaction('GetAllAssets');
+    const resultJson = utf8Decoder.decode(resultBytes);
+
+    return JSON.parse(resultJson);
+}
+
+
 
 export async function closeGRPCConnection(gateway: Gateway, client: grpc.Client): Promise<RESPONSE> {
     gateway.close();
